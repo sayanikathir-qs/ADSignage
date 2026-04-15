@@ -1,5 +1,6 @@
 <script setup>
-import { Search, MoreVertical, Chrome } from 'lucide-vue-next'
+import { playlists } from '../data/mockData'
+import { Search, MoreVertical, PlaySquare } from 'lucide-vue-next'
 </script>
 
 <template>
@@ -14,17 +15,16 @@ import { Search, MoreVertical, Chrome } from 'lucide-vue-next'
     </div>
 
     <div class="playlist-list">
-      <div class="playlist-item">
+      <div v-for="playlist in playlists" :key="playlist.id" class="playlist-item">
         <div class="playlist-icon">
-          <Chrome :size="24" color="#f59e0b" />
+          <PlaySquare :size="24" color="#14b8a6" />
         </div>
         <div class="playlist-info">
-          <h4>Sayani</h4>
-          <span class="duration">00:00:06</span>
+          <h4>{{ playlist.name }}</h4>
+          <span class="duration">{{ playlist.duration }} • {{ playlist.items }} items</span>
         </div>
         <div class="playlist-meta">
-          <span class="status-icon running">🏃</span>
-          <span class="last-edited">Last Edited on: Wed, Apr 15, 2026 7:58 AM</span>
+          <span class="last-edited">Last Edited: {{ playlist.lastEdited }}</span>
         </div>
         <button class="more-options">
           <MoreVertical :size="20" />
@@ -65,7 +65,7 @@ import { Search, MoreVertical, Chrome } from 'lucide-vue-next'
   background: white;
   border: none;
   padding: 0.75rem 1rem;
-  color: #f59e0b;
+  color: #14b8a6;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -82,7 +82,7 @@ import { Search, MoreVertical, Chrome } from 'lucide-vue-next'
   display: flex;
   align-items: center;
   background: white;
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   gap: 1.5rem;
@@ -95,7 +95,7 @@ import { Search, MoreVertical, Chrome } from 'lucide-vue-next'
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #f3f4f6;
+  background-color: rgba(20, 184, 166, 0.1);
 }
 
 .playlist-info {
@@ -104,7 +104,7 @@ import { Search, MoreVertical, Chrome } from 'lucide-vue-next'
 
 .playlist-info h4 {
   margin: 0 0 0.25rem 0;
-  color: #1f2937;
+  color: #111827;
   font-weight: 500;
 }
 
@@ -128,7 +128,7 @@ import { Search, MoreVertical, Chrome } from 'lucide-vue-next'
 .more-options {
   background: transparent;
   border: none;
-  color: #4b5563;
+  color: #9ca3af;
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -139,5 +139,6 @@ import { Search, MoreVertical, Chrome } from 'lucide-vue-next'
 
 .more-options:hover {
   background: #f3f4f6;
+  color: #111827;
 }
 </style>

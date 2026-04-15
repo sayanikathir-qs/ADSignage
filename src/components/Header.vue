@@ -11,7 +11,7 @@ const pageTitle = computed(() => route.name)
   <header class="header">
     <div class="header-left">
       <button class="menu-btn">
-        <Menu :size="24" color="#f59e0b" />
+        <Menu :size="24" color="#14b8a6" />
       </button>
       <h1 class="page-title">{{ pageTitle }}</h1>
     </div>
@@ -72,7 +72,7 @@ const pageTitle = computed(() => route.name)
 }
 
 .action-btn {
-  background-color: #f59e0b;
+  background-color: #14b8a6;
   color: #fff;
   border: none;
   padding: 0.6rem 1.25rem;
@@ -86,7 +86,7 @@ const pageTitle = computed(() => route.name)
 }
 
 .action-btn:hover {
-  background-color: #d97706;
+  background-color: #0d9488;
 }
 
 .user-profile {
