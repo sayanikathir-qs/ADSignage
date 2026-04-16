@@ -1,162 +1,144 @@
-<script setup>
-import { LayoutGrid, List, ChevronDown } from 'lucide-vue-next'
-import { useMediaStore } from '../../stores/media'
-
-const store = useMediaStore()
-
-const typeFilters = [
-  { label: 'All',   value: 'all'   },
-  { label: 'Image', value: 'image' },
-  { label: 'Video', value: 'video' },
-  { label: 'HTML',  value: 'html'  },
-  { label: 'PDF',   value: 'pdf'   },
-]
-
-const sortOptions = [
-  { label: 'Latest', value: 'latest' },
-  { label: 'Oldest', value: 'oldest' },
-  { label: 'Name',   value: 'name'   },
-  { label: 'Size',   value: 'size'   },
-]
-</script>
-
 <template>
-  <div class="toolbar">
-    <!-- Search -->
-    <div class="search-bar">
-      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-      </svg>
-      <input
-        type="text"
-        class="search-input"
-        placeholder="Search media..."
-        :value="store.search"
-        @input="store.setSearch($event.target.value)"
-      />
-    </div>
+  <v-card variant="outlined" class="mb-4">
+    <v-card-text class="pa-3">
+      <div class="filters-wrapper">
+        <!-- Search -->
+        <div class="filter-item search">
+          <v-text-field
+            v-model="searchValue"
+            placeholder="Search media..."
+            variant="outlined"
+            density="compact"
+            hide-details
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            @update:model-value="debouncedSearch"
+          />
+        </div>
 
-    <!-- Type Filters -->
-    <div class="filter-pills">
-      <button
-        v-for="f in typeFilters"
-        :key="f.value"
-        :class="['filter-pill', { active: store.activeType === f.value }]"
-        @click="store.setType(f.value)"
-      >
-        {{ f.label }}
-      </button>
-    </div>
+        <!-- Type Filter -->
+        <div class="filter-item">
+          <v-select
+            v-model="typeValue"
+            :items="typeOptions"
+            label="Type"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            @update:model-value="handleTypeChange"
+          />
+        </div>
 
-    <!-- View Toggle -->
-    <div class="view-toggle">
-      <button
-        :class="['view-btn', { active: store.viewMode === 'grid' }]"
-        @click="store.setView('grid')"
-        title="Grid View"
-      >
-        <LayoutGrid :size="18" />
-      </button>
-      <button
-        :class="['view-btn', { active: store.viewMode === 'list' }]"
-        @click="store.setView('list')"
-        title="List View"
-      >
-        <List :size="18" />
-      </button>
-    </div>
+        <!-- Customer Filter -->
+        <div class="filter-item">
+          <v-select
+            v-model="customerValue"
+            :items="customers"
+            label="Customer"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            @update:model-value="handleCustomerChange"
+          />
+        </div>
 
-    <!-- Sort -->
-    <select
-      class="sort-dropdown"
-      :value="store.sortBy"
-      @change="store.setSort($event.target.value)"
-    >
-      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
-        {{ opt.label }}
-      </option>
-    </select>
-  </div>
+        <!-- Clear Filters -->
+        <div class="filter-item">
+          <v-btn
+            variant="text"
+            size="small"
+            prepend-icon="mdi-filter-variant-remove"
+            :disabled="!hasActiveFilters"
+            @click="handleClearAll"
+          >
+            Clear Filters
+          </v-btn>
+        </div>
+      </div>
+    </v-card-text>
+  </v-card>
 </template>
 
+<script setup>
+import { ref, computed, watch } from "vue";
+import { debounce } from "@/utils/function";
+import { useMediaStore } from "@/stores/media";
+
+const emit = defineEmits(["search", "type-change", "customer-change", "clear"]);
+
+const mediaStore = useMediaStore();
+
+const searchValue = ref("");
+const typeValue = ref(null);
+const customerValue = ref(null);
+
+const typeOptions = [
+  { title: "Image", value: "image" },
+  { title: "Video", value: "video" },
+  { title: "HTML", value: "html" },
+  { title: "PDF", value: "pdf" },
+];
+
+const customers = computed(() => mediaStore.uniqueCustomers);
+
+const hasActiveFilters = computed(() => {
+  return searchValue.value || typeValue.value || customerValue.value;
+});
+
+const debouncedSearch = debounce((value) => {
+  emit("search", value);
+}, 300);
+
+const handleTypeChange = (value) => {
+  emit("type-change", value);
+};
+
+const handleCustomerChange = (value) => {
+  emit("customer-change", value);
+};
+
+const handleClearAll = () => {
+  searchValue.value = "";
+  typeValue.value = null;
+  customerValue.value = null;
+  emit("clear");
+};
+
+watch(searchValue, (value) => {
+  if (!value) {
+    emit("search", "");
+  }
+});
+</script>
+
 <style scoped>
-.toolbar {
+.filters-wrapper {
   display: flex;
+  gap: 12px;
   align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 0;
   flex-wrap: wrap;
 }
 
-
-
-
-/* View Toggle */
-.view-toggle {
-  display: flex;
-  gap: 0.25rem;
-  background: var(--color-bg-surface);
-  padding: 0.25rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
+.filter-item {
+  min-width: 150px;
 }
 
-.view-btn {
-  padding: 0.5rem;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.view-btn:hover {
-  color: var(--color-text-primary);
-  background: var(--color-bg-hover);
-}
-
-.view-btn.active {
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
-}
-
-
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .toolbar {
-    gap: 0.75rem;
-  }
-  
-  .search-bar {
-    width: 200px;
-  }
+.filter-item.search {
+  flex: 1;
+  min-width: 250px;
 }
 
 @media (max-width: 768px) {
-  .toolbar {
+  .filters-wrapper {
     flex-direction: column;
-    align-items: stretch;
   }
   
-  .search-bar,
-  .filter-pills,
-  .view-toggle,
-  .sort-dropdown {
+  .filter-item,
+  .filter-item.search {
     width: 100%;
-  }
-  
-  .filter-pills {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .view-toggle {
-    justify-content: center;
+    min-width: 100%;
   }
 }
 </style>

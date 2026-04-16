@@ -1,63 +1,209 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { media as mockMedia } from '../data/mockData'
+import { defineStore } from "pinia";
+import { media as mockMedia, mediaStats } from "../data/mockData.js"
+import { useAppStore } from "@/stores/app";
 
-export const useMediaStore = defineStore('media', () => {
-  // ------- State -------
-  const items = ref([...mockMedia])
-  const search = ref('')
-  const activeType = ref('all')
-  const sortBy = ref('latest')
-  const viewMode = ref('grid') // 'grid' | 'list'
+export const useMediaStore = defineStore("media", {
+  state: () => ({
+    mediaItems: [],
+    loading: false,
+    stats: {
+      totalStorage: "2.4 TB",
+      totalFiles: "18,429",
+      videos: "4,218",
+      images: "12,847",
+    },
 
-  // ------- Getters -------
-  const filteredItems = computed(() => {
-    let result = items.value
+    filters: {
+      search: null,
+      type: null,
+      customer: null,
+      dateFrom: null,
+      dateTo: null,
+    },
+  }),
 
-    if (activeType.value !== 'all') {
-      result = result.filter(item => item.type === activeType.value)
-    }
+  getters: {
+    formattedMedia: (state) => {
+      return state.mediaItems.map((item) => ({
+        ...item,
+        typeLabel: item.type?.charAt(0).toUpperCase() + item.type?.slice(1),
+        sizeFormatted: item.size,
+        dateFormatted: item.date,
+      }));
+    },
 
-    if (search.value.trim()) {
-      const q = search.value.toLowerCase()
-      result = result.filter(item =>
-        item.name.toLowerCase().includes(q) ||
-        item.customer?.toLowerCase().includes(q)
-      )
-    }
+    filteredMedia: (state) => {
+      let filtered = [...state.mediaItems];
 
-    if (sortBy.value === 'latest') {
-      result = [...result].sort((a, b) => new Date(b.date) - new Date(a.date))
-    } else if (sortBy.value === 'oldest') {
-      result = [...result].sort((a, b) => new Date(a.date) - new Date(b.date))
-    } else if (sortBy.value === 'name') {
-      result = [...result].sort((a, b) => a.name.localeCompare(b.name))
-    } else if (sortBy.value === 'size') {
-      result = [...result].sort((a, b) => {
-        const parseSize = s => parseFloat(s) * (s.includes('MB') ? 1024 : 1)
-        return parseSize(b.size) - parseSize(a.size)
-      })
-    }
+      if (state.filters.search) {
+        const searchLower = state.filters.search.toLowerCase();
+        filtered = filtered.filter(
+          (item) =>
+            item.name?.toLowerCase().includes(searchLower) ||
+            item.customer?.toLowerCase().includes(searchLower)
+        );
+      }
 
-    return result
-  })
+      if (state.filters.type) {
+        filtered = filtered.filter((item) => item.type === state.filters.type);
+      }
 
-  // ------- Actions -------
-  function setSearch(val) { search.value = val }
-  function setType(val) { activeType.value = val }
-  function setSort(val) { sortBy.value = val }
-  function setView(val) { viewMode.value = val }
+      if (state.filters.customer) {
+        filtered = filtered.filter(
+          (item) => item.customer === state.filters.customer
+        );
+      }
 
-  return {
-    items,
-    search,
-    activeType,
-    sortBy,
-    viewMode,
-    filteredItems,
-    setSearch,
-    setType,
-    setSort,
-    setView,
-  }
-})
+      return filtered;
+    },
+
+    getById: (state) => (id) =>
+      state.mediaItems.find((item) => item.id === id),
+
+    getStats: (state) => state.stats,
+
+    appStore: () => useAppStore(),
+
+    uniqueCustomers: (state) => {
+      const customers = new Set(state.mediaItems.map((item) => item.customer));
+      return Array.from(customers).filter(Boolean);
+    },
+
+    countByType: (state) => {
+      const counts = {
+        image: 0,
+        video: 0,
+        html: 0,
+        pdf: 0,
+        document: 0,
+      };
+
+      state.mediaItems.forEach((item) => {
+        if (counts.hasOwnProperty(item.type)) {
+          counts[item.type]++;
+        }
+      });
+
+      return counts;
+    },
+  },
+
+  actions: {
+    async fetchMedia() {
+      this.loading = true;
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        this.mediaItems = mockMedia;
+        return { success: true, data: mockMedia };
+      } catch (error) {
+        this.mediaItems = [];
+        return this.appStore.handleError(error, {
+          context: "Error fetching media",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async uploadMedia(mediaData) {
+      this.loading = true;
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+
+        const newMedia = {
+          id: this.mediaItems.length + 1,
+          name: mediaData.name,
+          type: mediaData.type,
+          size: mediaData.size || "0 KB",
+          date: new Date().toISOString().split("T")[0],
+          customer: mediaData.customer,
+          duration: mediaData.duration || null,
+          resolution: mediaData.resolution || null,
+          gradient:
+            mediaData.gradient ||
+            "linear-gradient(135deg,#3730a3,#1e3a5f)",
+        };
+
+        this.mediaItems.unshift(newMedia);
+
+        return {
+          success: true,
+          message: "Media uploaded successfully",
+          data: newMedia,
+        };
+      } catch (error) {
+        return this.appStore.handleError(error, {
+          context: "Error uploading media",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deleteMedia(mediaId) {
+      this.loading = true;
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        const index = this.mediaItems.findIndex((item) => item.id === mediaId);
+
+        if (index !== -1) {
+          const deleted = this.mediaItems.splice(index, 1)[0];
+
+          return {
+            success: true,
+            message: `Media "${deleted.name}" deleted successfully`,
+            data: deleted,
+          };
+        }
+
+        return { success: false, error: "Media not found" };
+      } catch (error) {
+        return this.appStore.handleError(error, {
+          context: "Error deleting media",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchStats() {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        this.stats = mediaStats;
+        return { success: true, data: mediaStats };
+      } catch (error) {
+        return this.appStore.handleError(error, {
+          context: "Error fetching media stats",
+        });
+      }
+    },
+
+    setSearchFilter(value) {
+      this.filters.search = value;
+    },
+
+    setTypeFilter(value) {
+      this.filters.type = value;
+    },
+
+    setCustomerFilter(value) {
+      this.filters.customer = value;
+    },
+
+    clearFilters() {
+      this.filters.search = null;
+      this.filters.type = null;
+      this.filters.customer = null;
+      this.filters.dateFrom = null;
+      this.filters.dateTo = null;
+    },
+
+    clearTextFilters() {
+      this.filters.search = null;
+    },
+  },
+});
