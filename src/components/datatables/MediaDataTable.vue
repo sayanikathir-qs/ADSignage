@@ -130,7 +130,6 @@ const getIconClass = (type) => {
    TABLE / LIST VIEW — Light Theme
    ============================================ */
 
-/* Container */
 .media-table-container {
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border);
@@ -296,13 +295,30 @@ const getIconClass = (type) => {
 }
 
 /* ============================================
-   GRID VIEW — Light Theme
+   GRID VIEW — Light Theme (FIXED)
    ============================================ */
 
 .media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 1.5rem;
+}
+
+/* FIX: Force white background and light borders */
+.media-card {
+  background: var(--color-bg-surface); /* White */
+  border: 1px solid var(--color-border); /* Light Border */
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.media-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
 }
 
 .card-thumb {
@@ -343,7 +359,9 @@ const getIconClass = (type) => {
 .badge.bottom-right { bottom: 8px; right: 8px; }
 .html-badge         { color: #fcd34d; }
 
+/* FIX: Footer background and text color for light mode */
 .card-footer {
+  background: var(--color-bg-surface); /* White */
   padding: 0.75rem;
   display: flex;
   align-items: flex-start;
@@ -356,10 +374,11 @@ const getIconClass = (type) => {
   min-width: 0;
 }
 
+/* FIX: Text should be dark (primary) */
 .card-name {
   display: block;
   font-size: 0.8rem;
-  color: var(--color-text-inverse);
+  color: var(--color-text-primary); /* Dark Text */
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;

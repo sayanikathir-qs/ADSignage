@@ -1,6 +1,15 @@
 <script setup>
+import { watch } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import Header from './components/Header.vue'
+import { useAppStore } from './stores/app'
+
+const appStore = useAppStore()
+
+watch(() => appStore.isDarkMode, (isDark) => {
+  document.documentElement.classList.toggle('dark', isDark)
+}, { immediate: true })
+
 </script>
 
 <template>
