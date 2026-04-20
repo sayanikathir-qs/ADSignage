@@ -17,10 +17,6 @@ const pageTitle = computed(() => route.name)
     </div>
     
     <div class="header-right">
-      <button v-if="pageTitle === 'Playlists'" class="action-btn">
-        <Plus :size="18" /> Create Playlist
-      </button>
-      
       <div class="user-profile">
         <img src="https://i.pravatar.cc/150?u=sayani" alt="User" class="avatar" />
       </div>
