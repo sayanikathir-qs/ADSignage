@@ -1,8 +1,17 @@
 <script setup>
 import { Play, MoreVertical, FileText, Code2, Image as ImageIcon, Video, FileText as FileIcon } from 'lucide-vue-next'
-import { useMediaStore } from '../../stores/media'
 
-const store = useMediaStore()
+const props = defineProps({
+  items: {
+    type: Array,
+    required: true,
+    default: () => []
+  },
+  viewMode: {
+    type: String,
+    default: 'list'
+  }
+})
 
 const typeColors = {
   video: { bg: 'rgba(99, 102, 241, 0.15)', text: '#4f46e5', label: 'video', icon: Video },
@@ -26,9 +35,9 @@ const getIconClass = (type) => {
 
 <template>
   <!-- ======== GRID VIEW ======== -->
-  <div v-if="store.viewMode === 'grid'" class="media-grid">
+  <div v-if="props.viewMode === 'grid'" class="media-grid">
     <div
-      v-for="item in store.filteredItems"
+      v-for="item in props.items"
       :key="item.id"
       class="media-card"
     >
@@ -61,7 +70,7 @@ const getIconClass = (type) => {
     </div>
 
     <!-- Empty state -->
-    <div v-if="store.filteredItems.length === 0" class="empty-state">
+    <div v-if="props.items.length === 0" class="empty-state">
       <FileText :size="40" color="var(--color-text-muted)" />
       <p>No media files found</p>
     </div>
@@ -82,7 +91,7 @@ const getIconClass = (type) => {
       </thead>
       <tbody>
         <tr
-          v-for="item in store.filteredItems"
+          v-for="item in props.items"
           :key="item.id"
           class="table-row"
           :class="{ selected: item.selected }"
@@ -114,7 +123,7 @@ const getIconClass = (type) => {
             </div>
           </td>
         </tr>
-        <tr v-if="store.filteredItems.length === 0">
+        <tr v-if="props.items.length === 0">
           <td colspan="6" class="empty-cell">
             <FileText :size="24" />
             <span>No media files found</span>

@@ -123,7 +123,7 @@
     </div>
 
     <!-- Media Grid -->
-    <div v-else :class="['media-grid', { 'media-grid--list': viewMode === 'list' }]">
+    <div v-else-if="viewMode === 'grid'" class="media-grid">
       <div
         v-for="item in displayedMedia"
         :key="item.id"
@@ -178,6 +178,13 @@
       </div>
     </div>
 
+    <!-- Media List View -->
+    <MediaDataTable
+      v-else
+      :items="displayedMedia"
+      view-mode="list"
+    />
+
     <!-- Upload Dialog -->
     <MediaUploadDialog
       v-model="uploadDialog.open"
@@ -191,6 +198,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useMediaStore } from "@/stores/media";
 import MediaUploadDialog from "@/components/dialogs/MediaUploadDialog.vue";
+import MediaDataTable from "@/components/datatables/MediaDataTable.vue";
 
 const mediaStore = useMediaStore();
 
