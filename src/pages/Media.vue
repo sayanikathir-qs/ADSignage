@@ -182,11 +182,11 @@
                     <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-monitor-screenshot</v-icon></template>
                     <v-list-item-title>Set to screen</v-list-item-title>
                   </v-list-item>
-                  <v-list-item @click.stop="() => {}">
+                  <v-list-item @click.stop="handleDownload(item)">
                     <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-download</v-icon></template>
                     <v-list-item-title>Download</v-list-item-title>
                   </v-list-item>
-                  <v-list-item @click.stop="() => {}" base-color="error">
+                  <v-list-item @click.stop="openDeleteDialog(item)" base-color="error">
                     <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
                     <v-list-item-title>Delete</v-list-item-title>
                   </v-list-item>
@@ -204,6 +204,8 @@
       v-else
       :items="displayedMedia"
       view-mode="list"
+      @download="handleDownload"
+      @delete="openDeleteDialog"
     />
 
     <!-- Upload Dialog -->
@@ -211,6 +213,21 @@
       v-model="uploadDialog.open"
       :loading="uploadDialog.loading"
       @submit="handleUploadSubmit"
+    />
+
+    <!-- Delete Confirmation Dialog -->
+    <ConfirmationDialog
+      v-model="deleteDialog.open"
+      title="Delete Media"
+      :message="`Are you sure you want to delete '${deleteDialog.item?.name}'?`"
+      detail="This action cannot be undone."
+      icon="mdi-delete-alert"
+      icon-color="error"
+      confirm-text="Delete"
+      confirm-color="error"
+      cancel-text="Cancel"
+      :loading="deleteDialog.loading"
+      @confirm="handleConfirmDelete"
     />
   </div>
 </template>
@@ -220,6 +237,7 @@ import { ref, computed, onMounted } from "vue";
 import { useMediaStore } from "@/stores/media";
 import MediaUploadDialog from "@/components/dialogs/MediaUploadDialog.vue";
 import MediaDataTable from "@/components/datatables/MediaDataTable.vue";
+import ConfirmationDialog from "@/components/dialogs/ConfirmationDialog.vue";
 
 const mediaStore = useMediaStore();
 
@@ -231,6 +249,12 @@ const sortBy = ref("latest");
 const uploadDialog = ref({
   open: false,
   loading: false,
+});
+
+const deleteDialog = ref({
+  open: false,
+  loading: false,
+  item: null,
 });
 
 const typeFilters = [
@@ -317,6 +341,40 @@ const handleUploadSubmit = async (payload) => {
     console.error("Upload error:", error);
   } finally {
     uploadDialog.value.loading = false;
+  }
+};
+
+const handleDownload = (item) => {
+  if (!item) return;
+  // Trigger mock download
+  const blob = new Blob([`Mock content for ${item.name}`], { type: "text/plain" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = item.name;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+};
+
+const openDeleteDialog = (item) => {
+  deleteDialog.value.item = item;
+  deleteDialog.value.open = true;
+};
+
+const handleConfirmDelete = async () => {
+  if (!deleteDialog.value.item) return;
+
+  deleteDialog.value.loading = true;
+  try {
+    await mediaStore.deleteMedia(deleteDialog.value.item.id);
+  } catch (error) {
+    console.error("Delete error:", error);
+  } finally {
+    deleteDialog.value.loading = false;
+    deleteDialog.value.open = false;
+    deleteDialog.value.item = null;
   }
 };
 

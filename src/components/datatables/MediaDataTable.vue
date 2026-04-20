@@ -13,6 +13,8 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['download', 'delete'])
+
 const typeColors = {
   video: { bg: 'rgba(99, 102, 241, 0.15)', text: '#4f46e5', label: 'video', icon: Video },
   image: { bg: 'rgba(20, 184, 166, 0.15)', text: '#0d9488', label: 'image', icon: ImageIcon },
@@ -130,13 +132,13 @@ const getIconClass = (type) => {
                     </template>
                     <v-list-item-title>Set to screen</v-list-item-title>
                   </v-list-item>
-                  <v-list-item @click.stop="() => {}">
+                  <v-list-item @click.stop="emit('download', item)">
                     <template v-slot:prepend>
                       <v-icon size="small" class="mr-2">mdi-download</v-icon>
                     </template>
                     <v-list-item-title>Download</v-list-item-title>
                   </v-list-item>
-                  <v-list-item @click.stop="() => {}" base-color="error">
+                  <v-list-item @click.stop="emit('delete', item)" base-color="error">
                     <template v-slot:prepend>
                       <v-icon size="small" class="mr-2">mdi-delete</v-icon>
                     </template>
