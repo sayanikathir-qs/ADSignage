@@ -18,6 +18,7 @@ watch(() => appStore.isDarkMode, (isDark) => {
     <div class="main-content">
       <Header />
       <main class="content-area">
+        <ToastContainer />
         <router-view></router-view>
       </main>
     </div>

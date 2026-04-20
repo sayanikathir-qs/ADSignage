@@ -2,6 +2,9 @@
 import { ref, computed } from 'vue'
 import draggable from 'vuedraggable'
 import { media as mockMedia } from '@/data/mockData'
+import { toast } from 'vue3-toastify'
+
+
 
 const props = defineProps({
   playlist: {
@@ -72,6 +75,16 @@ const handlePreview = () => {
   currentPreviewIndex.value = 0
   previewDialog.value = true
 }
+
+const publishPlaylist = () => {
+  console.log('Publishing playlist:', props.playlist)
+  console.log('Playlist items:', playlistItems.value)
+  if(playlistItems.value.length > 0){
+    toast.success('Playlist published successfully')
+    return
+  }
+  
+}
 </script>
 
 <template>
@@ -83,9 +96,9 @@ const handlePreview = () => {
         <span class="text-h6 font-weight-bold">{{ props.playlist.name }}</span>
       </div>
       <div class="header-actions">
-        <v-btn prepend-icon="mdi-publish" color="#14b8a6" variant="flat" class="text-none text-white">Publish</v-btn>
+        <v-btn prepend-icon="mdi-publish" color="#14b8a6" variant="flat" class="text-none text-white" @click="publishPlaylist">Publish</v-btn>
         <v-btn prepend-icon="mdi-eye" color="#14b8a6" variant="outlined" class="text-none" @click="handlePreview" :disabled="playlistItems.length === 0">Preview</v-btn>
-        <v-btn icon="mdi-close" variant="text" @click="emit('back')"></v-btn>
+        <v-btn prepend-icon="mdi-arrow-left"  color="#14b8a6" variant="flat" class="text-none text-white" @click="emit('back')">  Back</v-btn> 
       </div>
     </div>
 
