@@ -117,9 +117,33 @@ const getIconClass = (type) => {
           <td class="table-cell-secondary">{{ item.date }}</td>
           <td>
             <div class="table-actions">
-              <button class="btn-icon" :aria-label="`Actions for ${item.name}`">
-                <MoreVertical :size="16" />
-              </button>
+              <v-menu location="bottom end">
+                <template v-slot:activator="{ props }">
+                  <button class="btn-icon" v-bind="props" :aria-label="`Actions for ${item.name}`">
+                    <MoreVertical :size="16" />
+                  </button>
+                </template>
+                <v-list density="compact" min-width="160">
+                  <v-list-item @click.stop="() => {}">
+                    <template v-slot:prepend>
+                      <v-icon size="small" class="mr-2">mdi-monitor-screenshot</v-icon>
+                    </template>
+                    <v-list-item-title>Set to screen</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click.stop="() => {}">
+                    <template v-slot:prepend>
+                      <v-icon size="small" class="mr-2">mdi-download</v-icon>
+                    </template>
+                    <v-list-item-title>Download</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click.stop="() => {}" base-color="error">
+                    <template v-slot:prepend>
+                      <v-icon size="small" class="mr-2">mdi-delete</v-icon>
+                    </template>
+                    <v-list-item-title>Delete</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
             </div>
           </td>
         </tr>

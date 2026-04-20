@@ -168,10 +168,31 @@
         <!-- Info -->
         <div class="media-info">
           <div class="info-row">
-            <span class="media-name">{{ item.name }}</span>
-            <span :class="['media-type-badge', `media-type-badge--${item.type}`]">
-              {{ item.type }}
-            </span>
+            <span class="media-name" :title="item.name">{{ item.name }}</span>
+            <div class="info-actions">
+              <span :class="['media-type-badge', `media-type-badge--${item.type}`]">
+                {{ item.type }}
+              </span>
+              <v-menu location="bottom end">
+                <template v-slot:activator="{ props }">
+                  <v-btn icon="mdi-dots-vertical" variant="text" size="small" density="comfortable" v-bind="props" @click.stop></v-btn>
+                </template>
+                <v-list density="compact" min-width="160">
+                  <v-list-item @click.stop="() => {}">
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-monitor-screenshot</v-icon></template>
+                    <v-list-item-title>Set to screen</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click.stop="() => {}">
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-download</v-icon></template>
+                    <v-list-item-title>Download</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click.stop="() => {}" base-color="error">
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
+                    <v-list-item-title>Delete</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
           </div>
           <p class="media-customer">{{ item.customer }}</p>
         </div>
@@ -674,6 +695,13 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+}
+
+.info-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .media-type-badge {
