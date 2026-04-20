@@ -23,5 +23,12 @@ export const routes = [
     path: '/media',
     name: 'Media',
     component: () => import('../pages/Media.vue')
+  },
+  {
+    path: '/channels/:channelId',
+    name: 'ChannelBuilder',
+    component: () => import('../components/common/ChannelBuilder.vue'),
+    props: true,
+    meta: { title: 'Channel Builder' }
   }
 ];

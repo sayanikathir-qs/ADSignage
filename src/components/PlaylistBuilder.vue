@@ -4,8 +4,6 @@ import draggable from 'vuedraggable'
 import { media as mockMedia } from '@/data/mockData'
 import { toast } from 'vue3-toastify'
 
-
-
 const props = defineProps({
   playlist: {
     type: Object,

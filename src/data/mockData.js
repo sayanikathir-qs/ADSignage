@@ -13,9 +13,11 @@ export const screens = [
 ];
 
 export const channels = [
-  { id: 1, name: 'Corporate News', playlist: 'Internal Updates', status: 'Active' },
-  { id: 2, name: 'Ad Loop B', playlist: 'Client Promo 2026', status: 'Active' },
-  { id: 3, name: 'Lunch Specials', playlist: 'Food & Beverage', status: 'Paused' },
+  { id: 1, name: 'Sayani', status: 'Draft Saved. Publish required.', lastEdited: 'Wed, Apr 15, 2026 7:15 AM' },
+  { id: 2, name: 'DEMO 37', status: 'Published.', lastEdited: 'Tue, Mar 17, 2026 6:35 PM' },
+  { id: 3, name: 'YT 2 video - Channel', status: 'Published.', lastEdited: 'Tue, Feb 25, 2026 7:20 PM' },
+  { id: 4, name: 'ADS - Channel canvas', status: 'Published.', lastEdited: 'Wed, Apr 15, 2026 7:39 AM' },
+  { id: 5, name: '10secs tirn - YT Channel', status: 'Published.', lastEdited: 'Wed, Apr 30, 2025 6:49 PM' },
 ];
 
 export const playlists = [
