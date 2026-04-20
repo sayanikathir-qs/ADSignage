@@ -1,255 +1,302 @@
 <script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { 
-  LayoutDashboard, Monitor, List, PlaySquare, Image, 
-  Grid, Video, CreditCard, Package, Download, 
-  Menu, Send, Eye, Save, ExternalLink, Trash2, Clock, Plus, Settings, Layout 
+  ArrowLeft, 
+  Play, 
+  Save, 
+  Upload, 
+  MoreVertical, 
+  GripVertical,
+  Trash2,
+  Clock,
+  Calendar,
+  Settings,
+  Layout,
+  List
 } from 'lucide-vue-next'
 
 const route = useRoute()
+const router = useRouter()
+
+// Channel data
+const channelId = ref(route.params.channelId)
+const channelName = ref('Sayani')
 const activeTab = ref('playlist')
-const channelName = ref(route.query.name || 'Sayani')
 
-// Mock playlist data (replace with API call)
-const playlists = ref([
-  { id: 1, name: 'OutDoor ADD', duration: '00:00:00' },
-  { id: 2, name: 'Sayani', duration: '00:00:06' },
-  { id: 3, name: 'DEMO 37', duration: '00:00:34' },
-  { id: 4, name: 'YT 2 videos', duration: '00:00:35' },
-  { id: 5, name: 'ADS - Channel canvas', duration: '00:00:06' },
-  { id: 6, name: '10secs tim - YT Channel', duration: '00:00:11' },
-  { id: 7, name: 'Raindrop - Playlist', duration: '00:00:15' }
+// Playlist items
+const playlistItems = ref([
+  { id: 1, name: 'OutDoor ADD', duration: '00:00:00', type: 'video' },
+  { id: 2, name: 'Sayani', duration: '00:00:06', type: 'video', scheduled: true },
+  { id: 3, name: 'DEMO 37', duration: '00:00:34', type: 'video' },
+  { id: 4, name: 'YT 2 videos', duration: '00:00:35', type: 'youtube' },
+  { id: 5, name: 'ADS - Channel canvas', duration: '00:00:06', type: 'video' },
+  { id: 6, name: '10secs tim - YT Channel', duration: '00:00:11', type: 'youtube' },
+  { id: 7, name: 'Raindrop - Playlist', duration: '00:00:15', type: 'playlist' },
 ])
 
-const canvasItems = ref([
-  { id: 2, name: 'Sayani', duration: '00:00:06' }
+const layouts = ref([
+  { id: 1, name: 'Main 01', isDefault: true }
 ])
 
-const addToCanvas = (item) => {
-  if (!canvasItems.value.find(i => i.id === item.id)) {
-    canvasItems.value.push({ ...item })
+const selectedLayout = ref(layouts.value[0])
+
+// Computed
+const totalDuration = computed(() => {
+  // Calculate total duration logic here
+  return '00:01:47'
+})
+
+// Methods
+const handleBack = () => {
+  router.push({ name: 'Channels' })
+}
+
+const handleSave = () => {
+  // Save channel logic
+  console.log('Saving channel...')
+}
+
+const handlePreview = () => {
+  // Preview logic
+  console.log('Previewing channel...')
+}
+
+const handlePublish = () => {
+  // Publish logic
+  console.log('Publishing channel...')
+}
+
+const handleDeleteItem = (itemId) => {
+  playlistItems.value = playlistItems.value.filter(item => item.id !== itemId)
+}
+
+const handleAddPlaylist = () => {
+  // Open dialog to add playlist
+  console.log('Add playlist')
+}
+
+const getItemIcon = (type) => {
+  switch(type) {
+    case 'youtube': return '📺'
+    case 'playlist': return '📋'
+    default: return '🎬'
   }
 }
-
-const removeFromCanvas = (id) => {
-  canvasItems.value = canvasItems.value.filter(item => item.id !== id)
-}
-
-const handlePublish = () => console.log('Publishing channel...')
-const handlePreview = () => console.log('Opening preview...')
-const handleSave = () => console.log('Saving channel...')
 </script>
 
 <template>
   <div class="channel-builder">
+    <!-- Header -->
+    <header class="builder-header">
+      <div class="header-left">
+        <button class="btn-icon btn-back" @click="handleBack">
+          <ArrowLeft :size="20" />
+        </button>
+        <div class="channel-title">
+          <h2>{{ channelName }}</h2>
+          <span class="channel-status">Draft</span>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <button class="btn btn-outline" @click="handlePreview">
+          <Play :size="16" />
+          Preview
+        </button>
+        <button class="btn btn-outline" @click="handleSave">
+          <Save :size="16" />
+          Save
+        </button>
+        <button class="btn btn-primary" @click="handlePublish">
+          <Upload :size="16" />
+          Publish
+        </button>
+      </div>
+    </header>
 
+    <!-- Tabs -->
+    <div class="tabs-container">
+      <div class="tabs">
+        <button 
+          :class="['tab', { active: activeTab === 'playlist' }]"
+          @click="activeTab = 'playlist'"
+        >
+          <List :size="16" />
+          Playlist
+        </button>
+        <button 
+          :class="['tab', { active: activeTab === 'layout' }]"
+          @click="activeTab = 'layout'"
+        >
+          <Layout :size="16" />
+          Layout
+        </button>
+        <button 
+          :class="['tab', { active: activeTab === 'settings' }]"
+          @click="activeTab = 'settings'"
+        >
+          <Settings :size="16" />
+          Settings
+        </button>
+      </div>
+      
+      <div class="layout-info" v-if="activeTab === 'playlist'">
+        <span class="layout-label">{{ selectedLayout.name }}</span>
+      </div>
+    </div>
 
     <!-- Main Content -->
-    <main class="main-content">
-      <!-- Top Header -->
-      <header class="top-header">
-        <div class="header-left">
-          <Menu :size="20" class="menu-icon" />
-          <input 
-            v-model="channelName" 
-            class="channel-name-input" 
-            placeholder="Channel Name"
-          />
-        </div>
-        
-        <div class="header-actions">
-          <button class="btn-action" @click="handlePublish">
-            <Send :size="14" /> Publish
-          </button>
-          <button class="btn-action" @click="handlePreview">
-            <Eye :size="14" /> Preview
-          </button>
-          <button class="btn-action" @click="handleSave">
-            <Save :size="14" /> Save
-          </button>
-        </div>
-      </header>
-
-      <!-- Builder Area -->
-      <div class="builder-container">
-        <!-- Left Panel: Playlist -->
-        <div class="panel left-panel">
-          <div class="tabs">
-            <button 
-              :class="['tab', { active: activeTab === 'playlist' }]"
-              @click="activeTab = 'playlist'"
-            >Playlist</button>
-            <button 
-              :class="['tab', { active: activeTab === 'layout' }]"
-              @click="activeTab = 'layout'"
-            >Layout</button>
-            <button 
-              :class="['tab', { active: activeTab === 'settings' }]"
-              @click="activeTab = 'settings'"
-            >Settings</button>
+    <div class="builder-content">
+      <!-- Playlist Tab -->
+      <div v-if="activeTab === 'playlist'" class="playlist-view">
+        <!-- Left Panel - Available Playlists -->
+        <div class="playlist-panel">
+          <div class="panel-header">
+            <h3>Playlist Items</h3>
+            <button class="btn-add" @click="handleAddPlaylist">
+              <span>+ Add</span>
+            </button>
           </div>
-
-          <div class="playlist-scroll">
+          
+          <div class="playlist-items">
             <div 
-              v-for="item in playlists" 
-              :key="item.id" 
+              v-for="item in playlistItems" 
+              :key="item.id"
               class="playlist-item"
-              @click="addToCanvas(item)"
             >
-              <div class="item-header">
-                <span class="item-name">{{ item.name }}</span>
-                <ExternalLink :size="12" class="edit-icon" />
+              <div class="item-drag">
+                <GripVertical :size="16" color="#9ca3af" />
               </div>
-              <span class="duration-badge">{{ item.duration }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right Panel: Canvas -->
-        <div class="panel right-panel">
-          <div class="canvas-header">Main 01</div>
-          <div class="canvas-area">
-            <div v-if="canvasItems.length === 0" class="empty-state">
-              Click a playlist item to add it here
-            </div>
-            
-            <div 
-              v-for="item in canvasItems" 
-              :key="item.id" 
-              class="canvas-item"
-            >
-              <div class="canvas-item-header">
-                <span class="item-name">{{ item.name }}</span>
-                <ExternalLink :size="12" class="edit-icon" />
+              
+              <div class="item-icon">
+                {{ getItemIcon(item.type) }}
               </div>
-              <div class="canvas-item-actions">
-                <span class="duration-badge">{{ item.duration }}</span>
-                <button class="btn-schedule">Schedule</button>
-                <button class="btn-delete" @click="removeFromCanvas(item.id)">
-                  <Trash2 :size="12" /> Delete
+              
+              <div class="item-info">
+                <div class="item-name">{{ item.name }}</div>
+                <div class="item-duration">
+                  <Clock :size="12" />
+                  {{ item.duration }}
+                </div>
+              </div>
+              
+              <div class="item-actions">
+                <button 
+                  v-if="item.scheduled"
+                  class="btn-scheduled"
+                  title="Scheduled"
+                >
+                  <Calendar :size="14" />
+                </button>
+                <button 
+                  class="btn-delete"
+                  @click="handleDeleteItem(item.id)"
+                  title="Delete"
+                >
+                  <Trash2 :size="16" />
                 </button>
               </div>
             </div>
           </div>
+          
+          <div class="playlist-footer">
+            <div class="total-duration">
+              <Clock :size="16" />
+              <span>Total Duration: {{ totalDuration }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel - Layout Preview -->
+        <div class="layout-preview">
+          <div class="preview-header">
+            <h3>Layout Preview</h3>
+            <button class="btn-edit-layout">Edit Layout</button>
+          </div>
+          
+          <div class="preview-screen">
+            <div class="screen-placeholder">
+              <Layout :size="48" color="#9ca3af" />
+              <span>{{ selectedLayout.name }}</span>
+            </div>
+          </div>
+          
+          <div class="zone-info">
+            <div class="zone-item">
+              <span class="zone-name">Main Zone</span>
+              <span class="zone-resolution">1920x1080</span>
+            </div>
+          </div>
         </div>
       </div>
-    </main>
+
+      <!-- Layout Tab -->
+      <div v-else-if="activeTab === 'layout'" class="layout-view">
+        <div class="layout-grid">
+          <div 
+            v-for="layout in layouts" 
+            :key="layout.id"
+            :class="['layout-card', { selected: selectedLayout.id === layout.id }]"
+            @click="selectedLayout = layout"
+          >
+            <div class="layout-thumbnail">
+              <Layout :size="64" color="#14b8a6" />
+            </div>
+            <div class="layout-name">{{ layout.name }}</div>
+            <div v-if="layout.isDefault" class="layout-badge">Default</div>
+          </div>
+          
+          <div class="layout-card add-layout">
+            <div class="add-layout-content">
+              <span class="add-icon">+</span>
+              <span>Add Layout</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div v-else-if="activeTab === 'settings'" class="settings-view">
+        <div class="settings-section">
+          <h3>Channel Information</h3>
+          <div class="form-group">
+            <label>Channel Name</label>
+            <input type="text" v-model="channelName" class="form-input" />
+          </div>
+        </div>
+        
+        <div class="settings-section">
+          <h3>Playback Settings</h3>
+          <div class="form-group">
+            <label>Repeat Mode</label>
+            <select class="form-select">
+              <option>Loop Continuously</option>
+              <option>Play Once</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-/* CSS Variables for theming */
-:root {
-  --sidebar-bg: #1e293b;
-  --sidebar-text: #94a3b8;
-  --sidebar-active: #f59e0b;
-  --sidebar-active-bg: rgba(245, 158, 11, 0.1);
-  --main-bg: #f8fafc;
-  --card-bg: #ffffff;
-  --border-color: #e5e7eb;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --accent: #f59e0b;
-  --accent-hover: #d97706;
-  --badge-bg: #fef3c7;
-  --badge-text: #92400e;
-  --schedule-bg: #ccfbf1;
-  --schedule-text: #0f766e;
-  --delete-bg: #ffe4e6;
-  --delete-text: #be123c;
-}
-
 .channel-builder {
-  display: flex;
-  height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--main-bg);
-  color: var(--text-primary);
-}
-
-/* Sidebar */
-.sidebar {
-  width: 240px;
-  background: var(--sidebar-bg);
-  color: var(--sidebar-text);
+  min-height: 100vh;
+  background-color: #f9fafb;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 0;
-  flex-shrink: 0;
 }
 
-.logo {
+/* Header */
+.builder-header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 2rem;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, #f59e0b, #fbbf24);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.logo-text {
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.nav-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9rem;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-}
-
-.nav-item.active {
-  background: var(--sidebar-active-bg);
-  color: var(--sidebar-active);
-  border-left: 3px solid var(--sidebar-active);
-  font-weight: 500;
-}
-
-/* Main Content */
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.top-header {
-  height: 64px;
-  background: var(--main-bg);
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 0 2rem;
+  align-items: center;
 }
 
 .header-left {
@@ -258,241 +305,504 @@ const handleSave = () => console.log('Saving channel...')
   gap: 1rem;
 }
 
-.menu-icon {
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.channel-name-input {
-  background: transparent;
+.btn-back {
+  background: none;
   border: none;
-  border-bottom: 1px dashed var(--text-secondary);
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  padding: 0.25rem 0;
-  outline: none;
-  width: 200px;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.channel-name-input:focus {
-  border-bottom-color: var(--accent);
+.btn-back:hover {
+  background-color: #f3f4f6;
+  color: #14b8a6;
+}
+
+.channel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.channel-title h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.channel-status {
+  background-color: #fef3c7;
+  color: #d97706;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .header-actions {
   display: flex;
-  gap: 0.5rem;
-  background: var(--accent);
-  padding: 0.25rem;
-  border-radius: 6px;
-}
-
-.btn-action {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  background: transparent;
-  border: none;
-  color: #1f2937;
-  font-size: 0.85rem;
-  font-weight: 500;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-action:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Builder Container */
-.builder-container {
-  display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 1.5rem;
-  padding: 1.5rem 2rem;
-  flex: 1;
-  overflow: hidden;
-}
-
-.panel {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Left Panel */
-.tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border-color);
-  padding: 0 1.5rem;
-}
-
-.tab {
-  padding: 1rem 0;
-  margin-right: 1.5rem;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  position: relative;
-}
-
-.tab.active {
-  color: var(--accent);
-}
-
-.tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--accent);
-  border-radius: 2px;
-}
-
-.playlist-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem 1.5rem;
-  display: flex;
-  flex-direction: column;
   gap: 0.75rem;
 }
 
-.playlist-item {
-  border: 1px dashed var(--border-color);
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.playlist-item:hover {
-  border-color: var(--accent);
-  background: #fffbeb;
+.btn-outline {
+  background: white;
+  border: 1px solid #d1d5db;
+  color: #374151;
 }
 
-.item-header {
+.btn-outline:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-primary {
+  background-color: #14b8a6;
+  border: 1px solid #14b8a6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0d9488;
+  border-color: #0d9488;
+}
+
+/* Tabs */
+.tabs-container {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 2rem;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  align-items: center;
 }
 
-.item-name {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.edit-icon {
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.duration-badge {
-  display: inline-block;
-  background: var(--badge-bg);
-  color: var(--badge-text);
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
-}
-
-/* Right Panel */
-.canvas-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.canvas-area {
-  flex: 1;
-  padding: 1rem 1.5rem;
-  overflow-y: auto;
+.tabs {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.empty-state {
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  padding: 3rem 0;
-  border: 1px dashed var(--border-color);
-  border-radius: 8px;
-}
-
-.canvas-item {
-  border: 1px dashed var(--border-color);
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
-}
-
-.canvas-item-actions {
+.tab {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.2s;
 }
 
-.btn-schedule {
-  background: var(--schedule-bg);
-  color: var(--schedule-text);
+.tab:hover {
+  color: #14b8a6;
+}
+
+.tab.active {
+  color: #14b8a6;
+  border-bottom-color: #14b8a6;
+}
+
+.layout-info {
+  padding: 1rem 0;
+}
+
+.layout-label {
+  background-color: #f3f4f6;
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Main Content */
+.builder-content {
+  flex: 1;
+  padding: 2rem;
+  overflow: auto;
+}
+
+/* Playlist View */
+.playlist-view {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
+  height: calc(100vh - 250px);
+}
+
+.playlist-panel {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.btn-add {
+  background-color: #14b8a6;
+  color: white;
   border: none;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
+}
+
+.btn-add:hover {
+  background-color: #0d9488;
+}
+
+.playlist-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+}
+
+.playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  cursor: move;
+  transition: all 0.2s;
+}
+
+.playlist-item:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.item-drag {
+  cursor: move;
+  padding: 0.25rem;
+}
+
+.item-icon {
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 6px;
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-name {
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-duration {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-scheduled {
+  background: none;
+  border: none;
+  color: #14b8a6;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.btn-scheduled:hover {
+  background-color: #f3f4f6;
 }
 
 .btn-delete {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--delete-bg);
-  color: var(--delete-text);
+  background: none;
   border: none;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  color: #ef4444;
   cursor: pointer;
-  margin-left: auto;
+  padding: 0.5rem;
+  border-radius: 4px;
 }
 
 .btn-delete:hover {
-  background: #fecdd3;
+  background-color: #fef2f2;
 }
 
-/* Scrollbar Styling */
-.playlist-scroll::-webkit-scrollbar,
-.canvas-area::-webkit-scrollbar {
-  width: 6px;
+.playlist-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
 }
 
-.playlist-scroll::-webkit-scrollbar-thumb,
-.canvas-area::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+.total-duration {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: #374151;
 }
 
-.playlist-scroll::-webkit-scrollbar-thumb:hover,
-.canvas-area::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+/* Layout Preview */
+.layout-preview {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.preview-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.btn-edit-layout {
+  background: none;
+  border: 1px solid #d1d5db;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn-edit-layout:hover {
+  background-color: #f9fafb;
+}
+
+.preview-screen {
+  flex: 1;
+  background-color: #f3f4f6;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.screen-placeholder {
+  text-align: center;
+  color: #6b7280;
+}
+
+.screen-placeholder span {
+  display: block;
+  margin-top: 0.75rem;
+  font-weight: 500;
+}
+
+.zone-info {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.zone-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.zone-name {
+  font-weight: 500;
+  color: #374151;
+}
+
+.zone-resolution {
+  color: #6b7280;
+}
+
+/* Layout View */
+.layout-view {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.layout-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.layout-card:hover {
+  border-color: #14b8a6;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.1);
+}
+
+.layout-card.selected {
+  border-color: #14b8a6;
+  background-color: #f0fdfa;
+}
+
+.layout-thumbnail {
+  margin-bottom: 1rem;
+}
+
+.layout-name {
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.layout-badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background-color: #14b8a6;
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.add-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+}
+
+.add-layout-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #6b7280;
+}
+
+.add-icon {
+  font-size: 2rem;
+  color: #14b8a6;
+}
+
+/* Settings View */
+.settings-view {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.settings-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.settings-section h3 {
+  margin: 0 0 1.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
 }
 </style>
