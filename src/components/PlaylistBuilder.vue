@@ -172,17 +172,17 @@ const handlePreview = () => {
           <v-toolbar-title class="font-weight-bold">Playlist Preview - {{ props.playlist.name }}</v-toolbar-title>
         </v-toolbar>
         
-        <v-card-text class="pa-0">
+        <v-card-text class="pa-0 bg-black">
           <v-carousel v-model="currentPreviewIndex" hide-delimiters show-arrows="hover" height="calc(100vh - 64px)">
             <v-carousel-item v-for="(item, i) in playlistItems" :key="i">
-              <div class="d-flex flex-column align-center justify-center h-100 w-100">
+              <v-sheet height="100%" width="100%" color="transparent" class="d-flex flex-column align-center justify-center">
                 <v-icon size="120" :color="getIconColor(item.type)">{{ getIcon(item.type) }}</v-icon>
                 <h2 class="text-white mt-6">{{ item.name }}</h2>
                 <div class="d-flex align-center mt-4">
                   <v-chip :color="getIconColor(item.type)" class="mr-3 text-uppercase font-weight-bold">{{ item.type }}</v-chip>
                   <span class="text-medium-emphasis text-h6">Duration: {{ item.duration || '00:10' }}</span>
                 </div>
-              </div>
+              </v-sheet>
             </v-carousel-item>
           </v-carousel>
         </v-card-text>

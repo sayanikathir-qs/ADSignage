@@ -182,6 +182,10 @@
                     <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-monitor-screenshot</v-icon></template>
                     <v-list-item-title>Set to screen</v-list-item-title>
                   </v-list-item>
+                  <v-list-item @click.stop="handlePreview(item)">
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-eye</v-icon></template>
+                    <v-list-item-title>Preview</v-list-item-title>
+                  </v-list-item>
                   <v-list-item @click.stop="handleDownload(item)">
                     <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-download</v-icon></template>
                     <v-list-item-title>Download</v-list-item-title>
@@ -204,6 +208,7 @@
       v-else
       :items="displayedMedia"
       view-mode="list"
+      @preview="handlePreview"
       @download="handleDownload"
       @delete="openDeleteDialog"
     />
@@ -229,6 +234,29 @@
       :loading="deleteDialog.loading"
       @confirm="handleConfirmDelete"
     />
+
+    <!-- Preview Dialog -->
+    <v-dialog v-model="previewDialog.open" fullscreen transition="dialog-bottom-transition">
+      <v-card class="bg-black" v-if="previewDialog.item">
+        <v-toolbar color="rgba(0,0,0,0.8)" class="text-white">
+          <v-btn icon variant="text" @click="previewDialog.open = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+          <v-toolbar-title class="font-weight-bold">Media Preview - {{ previewDialog.item.name }}</v-toolbar-title>
+        </v-toolbar>
+        
+        <v-card-text class="pa-0 bg-black">
+          <v-sheet height="calc(100vh - 64px)" width="100%" color="transparent" class="d-flex flex-column align-center justify-center">
+            <v-icon size="120" :color="getIconColor(previewDialog.item.type)">{{ getPreviewIcon(previewDialog.item.type) }}</v-icon>
+            <h2 class="text-white mt-6">{{ previewDialog.item.name }}</h2>
+            <div class="d-flex align-center mt-4">
+              <v-chip :color="getIconColor(previewDialog.item.type)" class="mr-3 text-uppercase font-weight-bold">{{ previewDialog.item.type }}</v-chip>
+              <span class="text-medium-emphasis text-h6">Duration: {{ previewDialog.item.duration || '00:10' }}</span>
+            </div>
+          </v-sheet>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -255,6 +283,11 @@ const deleteDialog = ref({
   open: false,
   loading: false,
   item: null,
+});
+
+const previewDialog = ref({
+  open: false,
+  item: null
 });
 
 const typeFilters = [
@@ -312,6 +345,16 @@ const getPreviewIcon = (type) => {
   return icons[type] || "mdi-file";
 };
 
+const getIconColor = (type) => {
+  switch (type) {
+    case 'video': return 'indigo'
+    case 'image': return 'teal'
+    case 'html': return 'warning'
+    case 'pdf': return 'error'
+    default: return 'grey'
+  }
+};
+
 const handleSearch = () => {
   // Search is handled by computed
 };
@@ -325,7 +368,12 @@ const handleSort = () => {
 };
 
 const handleCardClick = (item) => {
-  console.log("Clicked:", item);
+  handlePreview(item);
+};
+
+const handlePreview = (item) => {
+  previewDialog.value.item = item;
+  previewDialog.value.open = true;
 };
 
 const openUploadDialog = () => {
