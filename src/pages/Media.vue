@@ -383,10 +383,21 @@ const openUploadDialog = () => {
 const handleUploadSubmit = async (payload) => {
   uploadDialog.value.loading = true;
   try {
+    console.log("Payload:", payload);
+    
+    // 1. Upload the file
     await mediaStore.uploadMedia(payload);
+    
+    // 2. CLOSE THE DIALOG
     uploadDialog.value.open = false;
+    
+    // 3. CRITICAL: Refresh the media list so the new file appears
+    // (Assuming your store has a function to fetch the list, e.g., fetchMedia)
+    await mediaStore.fetchMedia(); 
+    
   } catch (error) {
     console.error("Upload error:", error);
+    // TODO: Show an error toast to the user
   } finally {
     uploadDialog.value.loading = false;
   }

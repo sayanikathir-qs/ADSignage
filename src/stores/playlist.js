@@ -1,10 +1,10 @@
 import { defineStore } from "pinia";
-import { media as mockMedia, mediaStats } from "../data/mockData.js"
+import { mockPlaylist, mockPlaylistStats } from "../data/mockData.js"
 import { useAppStore } from "@/stores/app";
 
-export const useMediaStore = defineStore("media", {
+export const usePlaylistStore = defineStore("playlist", {
   state: () => ({
-    mediaItems: [],
+    playlistItems: [],
     loading: false,
     stats: {
       totalStorage: "2.4 TB",
@@ -23,8 +23,8 @@ export const useMediaStore = defineStore("media", {
   }),
 
   getters: {
-    formattedMedia: (state) => {
-      return state.mediaItems.map((item) => ({
+    formattedPlaylists: (state) => {
+      return state.playlistItems.map((item) => ({
         ...item,
         typeLabel: item.type?.charAt(0).toUpperCase() + item.type?.slice(1),
         sizeFormatted: item.size,
@@ -32,8 +32,8 @@ export const useMediaStore = defineStore("media", {
       }));
     },
 
-    filteredMedia: (state) => {
-      let filtered = [...state.mediaItems];
+    filteredPlaylists: (state) => {
+      let filtered = [...state.playlistItems];
 
       if (state.filters.search) {
         const searchLower = state.filters.search.toLowerCase();
@@ -58,14 +58,14 @@ export const useMediaStore = defineStore("media", {
     },
 
     getById: (state) => (id) =>
-      state.mediaItems.find((item) => item.id === id),
+      state.playlistItems.find((item) => item.id === id),
 
     getStats: (state) => state.stats,
 
     appStore: () => useAppStore(),
 
     uniqueCustomers: (state) => {
-      const customers = new Set(state.mediaItems.map((item) => item.customer));
+      const customers = new Set(state.playlistItems.map((item) => item.customer));
       return Array.from(customers).filter(Boolean);
     },
 
@@ -78,7 +78,7 @@ export const useMediaStore = defineStore("media", {
         document: 0,
       };
 
-      state.mediaItems.forEach((item) => {
+      state.playlistItems.forEach((item) => {
         if (counts.hasOwnProperty(item.type)) {
           counts[item.type]++;
         }
@@ -89,75 +89,81 @@ export const useMediaStore = defineStore("media", {
   },
 
   actions: {
-    async fetchMedia() {
-  this.loading = true;
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    // ✅ Load from localStorage if it exists, otherwise fallback to mockData
-    const saved = localStorage.getItem('adsignage_media');
-    this.mediaItems = saved ? JSON.parse(saved) : mockMedia;
-    
-    return { success: true, data: this.mediaItems };
-  } catch (error) {
-    this.mediaItems = mockMedia; // Fallback on error
-    return this.appStore.handleError(error, { context: "Error fetching media" });
-  } finally {
-    this.loading = false;
-  }
-},
+    async fetchPlaylists() {
+      this.loading = true;
 
-    async uploadMedia(mediaData) {
-  this.loading = true;
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 800));
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        this.playlistItems = mockPlaylist;
+        return { success: true, data: mockPlaylist };
+      } catch (error) {
+        this.playlistItems = [];
+        return this.appStore.handleError(error, {
+          context: "Error fetching playlist",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
 
-    const newMedia = {
-      id: Date.now(), // ✅ Better than length + 1
-      name: mediaData.name,
-      type: mediaData.type,
-      size: mediaData.size || "0 KB",
-      date: new Date().toISOString().split("T")[0],
-      customer: mediaData.customer,
-      duration: mediaData.duration || null,
-      resolution: mediaData.resolution || null,
-      gradient: mediaData.gradient || "linear-gradient(135deg,#3730a3,#1e3a5f)",
-    };
+    async createPlaylist(playlistData) {
+      this.loading = true;
 
-    this.mediaItems.unshift(newMedia);
-    
-    // ✅ Save to localStorage so it survives refresh
-    localStorage.setItem('adsignage_media', JSON.stringify(this.mediaItems));
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 800));
 
-    return { success: true, message: "Media uploaded successfully", data: newMedia };
-  } catch (error) {
-    return this.appStore.handleError(error, { context: "Error uploading media" });
-  } finally {
-    this.loading = false;
-  }
-},
-    async deleteMedia(mediaId) {
+        const newMedia = {
+          id: this.mediaItems.length + 1,
+          name: playlistData.name,
+          type: playlistData.type,
+          size: playlistData.size || "0 KB",
+          date: new Date().toISOString().split("T")[0],
+          customer: playlistData.customer,
+          duration: playlistData.duration || null,
+          resolution: playlistData.resolution || null,
+          gradient:
+            playlistData.gradient ||
+            "linear-gradient(135deg,#3730a3,#1e3a5f)",
+        };
+
+        this.playlistItems.unshift(newPlaylist);
+
+        return {
+          success: true,
+          message: "Playlist created successfully",
+          data: newPlaylist,
+        };
+      } catch (error) {
+        return this.appStore.handleError(error, {
+          context: "Error creating playlist",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deletePlaylist(playlistId) {
       this.loading = true;
 
       try {
         await new Promise((resolve) => setTimeout(resolve, 300));
 
-        const index = this.mediaItems.findIndex((item) => item.id === mediaId);
+        const index = this.playlistItems.findIndex((item) => item.id === playlistId);
 
         if (index !== -1) {
-          const deleted = this.mediaItems.splice(index, 1)[0];
+          const deleted = this.playlistItems.splice(index, 1)[0];
 
           return {
             success: true,
-            message: `Media "${deleted.name}" deleted successfully`,
+            message: `Playlist "${deleted.name}" deleted successfully`,
             data: deleted,
           };
         }
 
-        return { success: false, error: "Media not found" };
+        return { success: false, error: "Playlist not found" };
       } catch (error) {
         return this.appStore.handleError(error, {
-          context: "Error deleting media",
+          context: "Error deleting playlist",
         });
       } finally {
         this.loading = false;
@@ -167,11 +173,11 @@ export const useMediaStore = defineStore("media", {
     async fetchStats() {
       try {
         await new Promise((resolve) => setTimeout(resolve, 300));
-        this.stats = mediaStats;
-        return { success: true, data: mediaStats };
+        this.stats = mockPlaylistStats;
+        return { success: true, data: mockPlaylistStats };
       } catch (error) {
         return this.appStore.handleError(error, {
-          context: "Error fetching media stats",
+          context: "Error fetching playlist stats",
         });
       }
     },
