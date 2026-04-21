@@ -1,106 +1,44 @@
 import { defineStore } from "pinia";
-import { mockPlaylist, mockPlaylistStats } from "../data/mockData.js"
+import { playlists as mockPlaylists } from "../data/mockData.js";
 import { useAppStore } from "@/stores/app";
+
+const STORAGE_KEY = 'adsignage_playlists';
 
 export const usePlaylistStore = defineStore("playlist", {
   state: () => ({
     playlistItems: [],
     loading: false,
-    stats: {
-      totalStorage: "2.4 TB",
-      totalFiles: "18,429",
-      videos: "4,218",
-      images: "12,847",
-    },
-
-    filters: {
-      search: null,
-      type: null,
-      customer: null,
-      dateFrom: null,
-      dateTo: null,
-    },
   }),
 
   getters: {
-    formattedPlaylists: (state) => {
-      return state.playlistItems.map((item) => ({
-        ...item,
-        typeLabel: item.type?.charAt(0).toUpperCase() + item.type?.slice(1),
-        sizeFormatted: item.size,
-        dateFormatted: item.date,
-      }));
-    },
-
-    filteredPlaylists: (state) => {
-      let filtered = [...state.playlistItems];
-
-      if (state.filters.search) {
-        const searchLower = state.filters.search.toLowerCase();
-        filtered = filtered.filter(
-          (item) =>
-            item.name?.toLowerCase().includes(searchLower) ||
-            item.customer?.toLowerCase().includes(searchLower)
-        );
-      }
-
-      if (state.filters.type) {
-        filtered = filtered.filter((item) => item.type === state.filters.type);
-      }
-
-      if (state.filters.customer) {
-        filtered = filtered.filter(
-          (item) => item.customer === state.filters.customer
-        );
-      }
-
-      return filtered;
-    },
-
-    getById: (state) => (id) =>
-      state.playlistItems.find((item) => item.id === id),
-
-    getStats: (state) => state.stats,
-
-    appStore: () => useAppStore(),
-
-    uniqueCustomers: (state) => {
-      const customers = new Set(state.playlistItems.map((item) => item.customer));
-      return Array.from(customers).filter(Boolean);
-    },
-
-    countByType: (state) => {
-      const counts = {
-        image: 0,
-        video: 0,
-        html: 0,
-        pdf: 0,
-        document: 0,
-      };
-
-      state.playlistItems.forEach((item) => {
-        if (counts.hasOwnProperty(item.type)) {
-          counts[item.type]++;
-        }
-      });
-
-      return counts;
-    },
+    getAll: (state) => state.playlistItems,
+    getById: (state) => (id) => state.playlistItems.find((item) => item.id === id),
   },
 
   actions: {
     async fetchPlaylists() {
       this.loading = true;
-
       try {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        this.playlistItems = mockPlaylist;
-        return { success: true, data: mockPlaylist };
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        
+        const saved = localStorage.getItem(STORAGE_KEY);
+        
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            this.playlistItems = Array.isArray(parsed) ? parsed : (mockPlaylists || []);
+          } catch {
+            this.playlistItems = mockPlaylists || [];
+          }
+        } else {
+          this.playlistItems = mockPlaylists || [];
+        }
+        
+        return { success: true,  data:this.playlistItems };
+        
       } catch (error) {
-        this.playlistItems = [];
-        return this.appStore.handleError(error, {
-          context: "Error fetching playlist",
-        });
+        this.playlistItems = mockPlaylists || [];
+        return { success: false, error: error.message };
       } finally {
         this.loading = false;
       }
@@ -108,35 +46,27 @@ export const usePlaylistStore = defineStore("playlist", {
 
     async createPlaylist(playlistData) {
       this.loading = true;
-
       try {
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-        const newMedia = {
-          id: this.mediaItems.length + 1,
-          name: playlistData.name,
-          type: playlistData.type,
-          size: playlistData.size || "0 KB",
-          date: new Date().toISOString().split("T")[0],
-          customer: playlistData.customer,
-          duration: playlistData.duration || null,
-          resolution: playlistData.resolution || null,
-          gradient:
-            playlistData.gradient ||
-            "linear-gradient(135deg,#3730a3,#1e3a5f)",
+        const newPlaylist = {
+          id: Date.now(),
+          name: playlistData.name || 'Untitled',
+          customer: playlistData.customer || 'Default',
+          items: Array.isArray(playlistData.items) ? playlistData.items : [],
+          duration: playlistData.duration || '00:00:00',
+          lastEdited: new Date().toLocaleString(),
+          date: new Date().toISOString().split('T')[0],
+          status: playlistData.status || 'active',
         };
 
         this.playlistItems.unshift(newPlaylist);
-
-        return {
-          success: true,
-          message: "Playlist created successfully",
-          data: newPlaylist,
-        };
+        this._persistToStorage();
+        
+        return { success: true,  newPlaylist };
+        
       } catch (error) {
-        return this.appStore.handleError(error, {
-          context: "Error creating playlist",
-        });
+        return { success: false, error: error.message };
       } finally {
         this.loading = false;
       }
@@ -144,66 +74,71 @@ export const usePlaylistStore = defineStore("playlist", {
 
     async deletePlaylist(playlistId) {
       this.loading = true;
-
       try {
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
         const index = this.playlistItems.findIndex((item) => item.id === playlistId);
-
-        if (index !== -1) {
-          const deleted = this.playlistItems.splice(index, 1)[0];
-
-          return {
-            success: true,
-            message: `Playlist "${deleted.name}" deleted successfully`,
-            data: deleted,
-          };
+        
+        if (index === -1) {
+          return { success: false, error: 'Not found' };
         }
 
-        return { success: false, error: "Playlist not found" };
+        const deleted = this.playlistItems.splice(index, 1)[0];
+        this._persistToStorage();
+        
+        return { success: true, data: deleted };
+        
       } catch (error) {
-        return this.appStore.handleError(error, {
-          context: "Error deleting playlist",
-        });
+        return { success: false, error: error.message };
       } finally {
         this.loading = false;
       }
     },
 
-    async fetchStats() {
+    async updatePlaylist(playlistId, updates) {
+      this.loading = true;
       try {
         await new Promise((resolve) => setTimeout(resolve, 300));
-        this.stats = mockPlaylistStats;
-        return { success: true, data: mockPlaylistStats };
+
+        const index = this.playlistItems.findIndex((item) => item.id === playlistId);
+        if (index === -1) throw new Error('Playlist not found');
+
+        this.playlistItems[index] = { ...this.playlistItems[index], ...updates };
+        this._persistToStorage();
+
+        return { success: true,  data: this.playlistItems[index] };
+        
       } catch (error) {
-        return this.appStore.handleError(error, {
-          context: "Error fetching playlist stats",
-        });
+        return { success: false, error: error.message };
+      } finally {
+        this.loading = false;
       }
     },
 
-    setSearchFilter(value) {
-      this.filters.search = value;
+    _persistToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.playlistItems));
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
     },
 
-    setTypeFilter(value) {
-      this.filters.type = value;
+    clearAll() {
+      localStorage.removeItem(STORAGE_KEY);
+      this.playlistItems = mockPlaylists || [];
+      return { success: true };
     },
 
-    setCustomerFilter(value) {
-      this.filters.customer = value;
-    },
-
+    // Filter helpers
+    setSearchFilter(value) { this.filters.search = value; },
+    setTypeFilter(value) { this.filters.type = value; },
+    setCustomerFilter(value) { this.filters.customer = value; },
     clearFilters() {
       this.filters.search = null;
       this.filters.type = null;
       this.filters.customer = null;
       this.filters.dateFrom = null;
       this.filters.dateTo = null;
-    },
-
-    clearTextFilters() {
-      this.filters.search = null;
     },
   },
 });

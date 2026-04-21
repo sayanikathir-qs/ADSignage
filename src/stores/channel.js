@@ -1,103 +1,77 @@
 import { defineStore } from "pinia";
-import { channels as mockChannels, channelStats } from "../data/mockData.js"
+import { channels as mockChannels } from "../data/mockData.js";
 import { useAppStore } from "@/stores/app";
 
-export const useChannelStore = defineStore("channel", {
+export const useChannelsStore = defineStore("channels", {
   state: () => ({
-    channelItems: [],
+    channels: [],
     loading: false,
-    stats: {
-      totalStorage: "2.4 TB",
-      totalFiles: "18,429",
-      videos: "4,218",
-      images: "12,847",
-    },
-
     filters: {
       search: null,
-      type: null,
+      status: null,
       customer: null,
-      dateFrom: null,
-      dateTo: null,
     },
   }),
 
   getters: {
-    formattedMedia: (state) => {
-      return state.channelItems.map((item) => ({
+    formattedChannels: (state) => {
+      return state.channels.map((item) => ({
         ...item,
-        typeLabel: item.type?.charAt(0).toUpperCase() + item.type?.slice(1),
-        sizeFormatted: item.size,
-        dateFormatted: item.date,
+        statusLabel: item.status?.charAt(0).toUpperCase() + item.status?.slice(1),
+        dateFormatted: item.date || new Date().toISOString().split("T")[0],
       }));
     },
 
-    filteredMedia: (state) => {
-      let filtered = [...state.channelItems];
+    filteredChannels: (state) => {
+      let filtered = [...state.channels];
 
       if (state.filters.search) {
         const searchLower = state.filters.search.toLowerCase();
         filtered = filtered.filter(
           (item) =>
             item.name?.toLowerCase().includes(searchLower) ||
+            item.location?.toLowerCase().includes(searchLower) ||
             item.customer?.toLowerCase().includes(searchLower)
         );
       }
 
-      if (state.filters.type) {
-        filtered = filtered.filter((item) => item.type === state.filters.type);
+      if (state.filters.status) {
+        filtered = filtered.filter((item) => item.status === state.filters.status);
       }
 
       if (state.filters.customer) {
-        filtered = filtered.filter(
-          (item) => item.customer === state.filters.customer
-        );
+        filtered = filtered.filter((item) => item.customer === state.filters.customer);
       }
 
       return filtered;
     },
 
     getById: (state) => (id) =>
-      state.channelItems.find((item) => item.id === id),
+      state.channels.find((item) => item.id === id),
 
-    getStats: (state) => state.stats,
-
-    appStore: () => useAppStore(),
+    activeChannels: (state) =>
+      state.channels.filter((channel) => channel.status === "active"),
 
     uniqueCustomers: (state) => {
-      const customers = new Set(state.channelItems.map((item) => item.customer));
+      const customers = new Set(state.channels.map((item) => item.customer));
       return Array.from(customers).filter(Boolean);
     },
 
-    countByType: (state) => {
-      const counts = {
-        image: 0,
-        video: 0,
-        html: 0,
-        pdf: 0,
-        document: 0,
-      };
-
-      state.channelItems.forEach((item) => {
-        if (counts.hasOwnProperty(item.type)) {
-          counts[item.type]++;
-        }
-      });
-
-      return counts;
-    },
+    appStore: () => useAppStore(),
   },
 
   actions: {
     async fetchChannels() {
       this.loading = true;
-
       try {
         await new Promise((resolve) => setTimeout(resolve, 500));
-        this.channelItems = mockChannels;
-        return { success: true, data: mockChannels };
+
+        const saved = localStorage.getItem("adsignage_channels");
+        this.channels = saved ? JSON.parse(saved) : mockChannels;
+
+        return { success: true, data: this.channels };
       } catch (error) {
-        this.channelItems = [];
+        this.channels = mockChannels;
         return this.appStore.handleError(error, {
           context: "Error fetching channels",
         });
@@ -108,25 +82,23 @@ export const useChannelStore = defineStore("channel", {
 
     async createChannel(channelData) {
       this.loading = true;
-
       try {
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 600));
 
         const newChannel = {
-          id: this.channelItems.length + 1,
+          id: Date.now(),
           name: channelData.name,
-          type: channelData.type,
-          size: channelData.size || "0 KB",
+          customer: channelData.customer,
+          location: channelData.location || "",
+          status: channelData.status || "inactive",
+          playlistId: channelData.playlistId || null,
+          screenId: channelData.screenId || null,
+          lastConnected: null,
           date: new Date().toISOString().split("T")[0],
-          customer: mediaData.customer,
-          duration: mediaData.duration || null,
-          resolution: mediaData.resolution || null,
-          gradient:
-            mediaData.gradient ||
-            "linear-gradient(135deg,#3730a3,#1e3a5f)",
         };
 
-        this.channelItems.unshift(newChannel);
+        this.channels.unshift(newChannel);
+        this._saveToStorage();
 
         return {
           success: true,
@@ -142,25 +114,47 @@ export const useChannelStore = defineStore("channel", {
       }
     },
 
-    async deleteChannel(channelId) {
+    async updateChannel(id, updates) {
       this.loading = true;
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 400));
 
+        const index = this.channels.findIndex((item) => item.id === id);
+        if (index === -1) throw new Error("Channel not found");
+
+        this.channels[index] = { ...this.channels[index], ...updates };
+        this._saveToStorage();
+
+        return {
+          success: true,
+          message: "Channel updated successfully",
+          data: this.channels[index],
+        };
+      } catch (error) {
+        return this.appStore.handleError(error, {
+          context: "Error updating channel",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deleteChannel(id) {
+      this.loading = true;
       try {
         await new Promise((resolve) => setTimeout(resolve, 300));
 
-        const index = this.channelItems.findIndex((item) => item.id === channelId);
+        const index = this.channels.findIndex((item) => item.id === id);
+        if (index === -1) throw new Error("Channel not found");
 
-        if (index !== -1) {
-          const deleted = this.channelItems.splice(index, 1)[0];
+        const deleted = this.channels.splice(index, 1)[0];
+        this._saveToStorage();
 
-          return {
-            success: true,
-            message: `Channel "${deleted.name}" deleted successfully`,
-            data: deleted,
-          };
-        }
-
-        return { success: false, error: "Channel not found" };
+        return {
+          success: true,
+          message: `Channel "${deleted.name}" deleted successfully`,
+          data: deleted,
+        };
       } catch (error) {
         return this.appStore.handleError(error, {
           context: "Error deleting channel",
@@ -170,24 +164,30 @@ export const useChannelStore = defineStore("channel", {
       }
     },
 
-    async fetchStats() {
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        this.stats = channelStats;
-        return { success: true, data: channelStats };
-      } catch (error) {
-        return this.appStore.handleError(error, {
-          context: "Error fetching channel stats",
-        });
+    async updateChannelStatus(id, status) {
+      const channel = this.channels.find((c) => c.id === id);
+      if (!channel) throw new Error("Channel not found");
+
+      channel.status = status;
+      if (status === "active") {
+        channel.lastConnected = new Date().toISOString();
       }
+
+      this._saveToStorage();
+      return { success: true, data: channel };
+    },
+
+    // Private helper to persist state
+    _saveToStorage() {
+      localStorage.setItem("adsignage_channels", JSON.stringify(this.channels));
     },
 
     setSearchFilter(value) {
       this.filters.search = value;
     },
 
-    setTypeFilter(value) {
-      this.filters.type = value;
+    setStatusFilter(value) {
+      this.filters.status = value;
     },
 
     setCustomerFilter(value) {
@@ -196,14 +196,8 @@ export const useChannelStore = defineStore("channel", {
 
     clearFilters() {
       this.filters.search = null;
-      this.filters.type = null;
+      this.filters.status = null;
       this.filters.customer = null;
-      this.filters.dateFrom = null;
-      this.filters.dateTo = null;
-    },
-
-    clearTextFilters() {
-      this.filters.search = null;
     },
   },
 });
