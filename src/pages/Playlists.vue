@@ -1,20 +1,27 @@
 <script setup>
-import { Search, MoreVertical } from 'lucide-vue-next'
-import { ref, onMounted } from 'vue'
+import { Search, MoreVertical, X } from 'lucide-vue-next'
+import { ref, onMounted, nextTick } from 'vue'
 import { usePlaylistStore } from '@/stores/playlist'
 import PlaylistBuilder from '@/components/PlaylistBuilder.vue'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 
 const playlistStore = usePlaylistStore()
 const activePlaylist = ref(null)
-
 const createDialog = ref(false)
 const newPlaylistName = ref('')
 const deleteDialog = ref({ open: false, item: null })
+const playlistInput = ref(null)
 
 onMounted(async () => {
   await playlistStore.fetchPlaylists()
 })
+
+const openCreateDialog = async () => {
+  createDialog.value = true
+  newPlaylistName.value = ''
+  await nextTick()
+  playlistInput.value?.focus()
+}
 
 const handleCreate = async () => {
   if (!newPlaylistName.value?.trim()) return
@@ -72,9 +79,8 @@ const handleConfirmDelete = async () => {
         color="#14b8a6" 
         variant="flat" 
         prepend-icon="mdi-plus-circle-outline" 
-        @click="createDialog = true" 
-        class="text-none font-weight-bold"
-        :loading="playlistStore.loading"
+        @click="openCreateDialog" 
+        class="text-none font-weight-bold rounded-lg"
       >
         Create Playlist
       </v-btn>
@@ -130,36 +136,41 @@ const handleConfirmDelete = async () => {
       </div>
     </div>
 
-    <!-- Create Dialog -->
-    <v-dialog v-model="createDialog" max-width="500">
-      <v-card class="rounded-lg pa-2">
-        <v-card-title class="d-flex justify-space-between align-center px-4 pt-4 pb-2">
-          <span class="text-subtitle-1 font-weight-bold">New Playlist</span>
-          <v-btn icon="mdi-close" variant="text" density="comfortable" @click="createDialog = false"></v-btn>
-        </v-card-title>
-        <v-card-text class="px-4 pb-2">
-          <v-text-field
-            v-model="newPlaylistName"
-            label="Playlist Name*"
-            variant="outlined"
-            color="#14b8a6"
-            density="comfortable"
-            hide-details
-            class="mb-4"
-            @keyup.enter="handleCreate"
-          ></v-text-field>
-          <v-btn 
-            color="#14b8a6" 
-            variant="flat" 
-            class="text-none px-6 rounded-lg font-weight-bold text-white" 
-            @click="handleCreate"
-            :loading="playlistStore.loading"
+    <!-- ✅ Custom Dialog (Matches Channel Dialog Style) -->
+    <div v-if="createDialog" class="dialog-overlay" @click.self="createDialog = false">
+      <div class="dialog-content">
+        <div class="dialog-header">
+          <h3>New Playlist Instance</h3>
+          <button class="close-btn" @click="createDialog = false">
+            <X :size="20" />
+          </button>
+        </div>
+
+        <div class="dialog-body">
+          <div class="form-group">
+            <label>Playlist Name*</label>
+            <input
+              type="text"
+              v-model="newPlaylistName"
+              class="form-input"
+              placeholder="Enter playlist name"
+              @keyup.enter="handleCreate"
+              ref="playlistInput"
+            />
+          </div>
+        </div>
+
+        <div class="dialog-footer">
+          <button 
+            class="btn-primary" 
+            @click="handleCreate" 
+            :disabled="playlistStore.loading || !newPlaylistName.trim()"
           >
-            Create Playlist
-          </v-btn>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+            {{ playlistStore.loading ? 'Creating...' : 'Create Playlist' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Delete Dialog -->
     <ConfirmationDialog
@@ -177,6 +188,7 @@ const handleConfirmDelete = async () => {
 </template>
 
 <style scoped>
+/* --- Page & Layout Styles --- */
 .page-container { padding: 32px 40px; max-width: 1440px; margin: 0 auto; }
 .builder-view { height: 100%; }
 .playlist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
@@ -197,4 +209,136 @@ const handleConfirmDelete = async () => {
 .playlist-actions { display: flex; align-items: center; justify-content: center; }
 .more-options { background: transparent; border: 1px solid #e5e7eb; color: #4b5563; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 16px; transition: all 0.2s; }
 .more-options:hover { background: #f3f4f6; color: #111827; }
+
+/* --- Custom Dialog Styles (Matches Channel Dialog) --- */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.dialog-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.2s ease-out;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.dialog-body {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+.dialog-footer {
+  padding: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #f3f4f6;
+}
+
+.btn-primary {
+  background-color: #14b8a6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0d9488;
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 </style>
