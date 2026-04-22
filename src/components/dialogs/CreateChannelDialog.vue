@@ -167,7 +167,7 @@ const handleCreate = () => {
 
 .form-input:focus {
   outline: none;
-  border-color: #14b8a6;
+  border-color: #fdc704;
 }
 
 .radio-group {
@@ -310,7 +310,7 @@ const handleCreate = () => {
 }
 
 .btn-primary {
-  background-color: #14b8a6;
+  background-color: #fdc704;
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -321,6 +321,6 @@ const handleCreate = () => {
 }
 
 .btn-primary:hover {
-  background-color: #14b8a6;
+  background-color: #fdc704;
 }
 </style>

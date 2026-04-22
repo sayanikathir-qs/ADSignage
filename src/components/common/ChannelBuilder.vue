@@ -107,7 +107,7 @@ const getItemIcon = (type) => (type === 'youtube' ? Tv : Film)
 const getItemColor = (type) => {
   switch(type) {
     case 'youtube': return '#3b82f6'
-    case 'playlist': return '#14b8a6'
+    case 'playlist': return '#fdc704'
     default: return '#6366f1'
   }
 }
@@ -293,8 +293,8 @@ const formatTime = (hours, minutes) => {
 
             <template #footer v-if="channelItems.length === 0">
               <div class="empty-drop">
-                <Layout :size="48" color="#14b8a6" />
-                <span style="color: #14b8a6">Drop playlists here to build your channel</span>
+                <Layout :size="48" color="#fdc704" />
+                <span style="color: #fdc704">Drop playlists here to build your channel</span>
               </div>
             </template>
           </draggable>
@@ -311,7 +311,7 @@ const formatTime = (hours, minutes) => {
             @click="selectedLayout = layout"
           >
             <div class="layout-thumbnail">
-              <Layout :size="64" color="#14b8a6" />
+              <Layout :size="64" color="#fdc704" />
             </div>
             <div class="layout-name">{{ layout.name }}</div>
             <div v-if="layout.isDefault" class="layout-badge">Default</div>
@@ -438,7 +438,7 @@ const formatTime = (hours, minutes) => {
 
 .btn-back:hover {
   background-color: #f1f5f9;
-  color: #14b8a6;
+  color: #fdc704;
 }
 
 .channel-info {
@@ -492,8 +492,8 @@ const formatTime = (hours, minutes) => {
 }
 
 .btn-primary {
-  background-color: #14b8a6;
-  border-color: #14b8a6;
+  background-color: #fdc704;
+  border-color: #fdc704;
   color: white;
 }
 
@@ -533,12 +533,12 @@ const formatTime = (hours, minutes) => {
 }
 
 .tab:hover {
-  color: #14b8a6;
+  color: #fdc704;
 }
 
 .tab.active {
-  color: #14b8a6;
-  border-bottom-color: #14b8a6;
+  color: #fdc704;
+  border-bottom-color: #fdc704;
 }
 
 .layout-selector {
@@ -628,7 +628,7 @@ const formatTime = (hours, minutes) => {
 
 .playlist-item:hover {
   background-color: #f1f5f9;
-  border-color: #14b8a6;
+  border-color: #fdc704;
   box-shadow: 0 4px 12px rgba(20, 184, 166, 0.1);
 }
 
@@ -680,7 +680,7 @@ const formatTime = (hours, minutes) => {
 }
 
 .btn-schedule {
-  color: #14b8a6;
+  color: #fdc704;
 }
 
 .btn-schedule:hover {
@@ -696,7 +696,7 @@ const formatTime = (hours, minutes) => {
 }
 
 .btn-scheduled {
-  color: #14b8a6;
+  color: #fdc704;
 }
 
 .btn-delete {
@@ -723,14 +723,14 @@ const formatTime = (hours, minutes) => {
   align-items: center;
   margin-bottom: 1.25rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #14b8a6;
+  border-bottom: 2px solid #fdc704;
 }
 
 .preview-title {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #14b8a6;
+  color: #fdc704;
   display: flex;
   align-items: center;
 }
@@ -760,7 +760,7 @@ const formatTime = (hours, minutes) => {
 .drop-zone.is-empty {
   justify-content: center;
   align-items: center;
-  border: 2px dashed #14b8a6;
+  border: 2px dashed #fdc704;
   background: rgba(20, 184, 166, 0.05);
   border-radius: 8px;
 }
@@ -772,7 +772,7 @@ const formatTime = (hours, minutes) => {
   justify-content: center;
   gap: 1rem;
   height: 100%;
-  color: #14b8a6;
+  color: #fdc704;
 }
 
 .channel-item {
@@ -964,7 +964,7 @@ const formatTime = (hours, minutes) => {
 
 .time-input:focus {
   outline: none;
-  border-color: #14b8a6;
+  border-color: #fdc704;
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
 }
 
@@ -981,7 +981,7 @@ const formatTime = (hours, minutes) => {
 }
 
 .btn-schedule-submit {
-  background: #14b8a6;
+  background: #fdc704;
   color: #1e293b;
   border: none;
   padding: 0.75rem 2rem;
@@ -1022,12 +1022,12 @@ const formatTime = (hours, minutes) => {
 }
 
 .layout-card:hover {
-  border-color: #14b8a6;
+  border-color: #fdc704;
   box-shadow: 0 4px 12px rgba(20, 184, 166, 0.1);
 }
 
 .layout-card.selected {
-  border-color: #14b8a6;
+  border-color: #fdc704;
   background-color: #f0fdfa;
 }
 
@@ -1045,7 +1045,7 @@ const formatTime = (hours, minutes) => {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  background-color: #14b8a6;
+  background-color: #fdc704;
   color: white;
   padding: 0.25rem 0.625rem;
   border-radius: 12px;
@@ -1099,7 +1099,7 @@ const formatTime = (hours, minutes) => {
 
 .form-input:focus {
   outline: none;
-  border-color: #14b8a6;
+  border-color: #fdc704;
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
 }
 

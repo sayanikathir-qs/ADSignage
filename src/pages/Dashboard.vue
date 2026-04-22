@@ -18,7 +18,7 @@ const getIcon = (name) => {
     <div class="stats-grid">
       <div v-for="stat in dashboardStats" :key="stat.label" class="card stat-card">
         <div class="stat-icon-wrapper">
-          <component :is="getIcon(stat.icon)" :size="24" color="#14b8a6" />
+          <component :is="getIcon(stat.icon)" :size="24" color="#fdc704" />
         </div>
         <div class="stat-info">
           <span class="stat-label">{{ stat.label }}</span>

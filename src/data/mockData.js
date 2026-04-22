@@ -41,8 +41,8 @@ export const media = [
 ];
 
 export const mediaStats = [
-  { label: 'Total Storage', value: '2.4 TB', sub: '67% of 3.6 TB used', color: '#14b8a6' },
+  { label: 'Total Storage', value: '2.4 TB', sub: '67% of 3.6 TB used', color: '#fdc704' },
   { label: 'Total Files', value: '18,429', sub: 'Across all customers', color: '#6366f1' },
   { label: 'Videos', value: '4,218', sub: '1.8 TB total', color: '#8b5cf6' },
-  { label: 'Images',        value: '12,847', sub: '580 GB total',              color: '#14b8a6' },
+  { label: 'Images', value: '12,847', sub: '580 GB total', color: '#fdc704' },
 ];

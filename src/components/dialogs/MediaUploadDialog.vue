@@ -302,7 +302,7 @@ const getFileIcon = (type) => {
 
 const getFileColor = (type) => {
   const colors = {
-    image: "linear-gradient(135deg, #14b8a6, #0d9488)",
+    image: "linear-gradient(135deg, #fdc704, #0d9488)",
     video: "linear-gradient(135deg, #6366f1, #4f46e5)",
     html: "linear-gradient(135deg, #f59e0b, #d97706)",
     pdf: "linear-gradient(135deg, #ef4444, #dc2626)",
@@ -465,7 +465,7 @@ const resetForm = () => {
 <style scoped>
 /* Green Theme Colors */
 .text-green {
-  color: #14b8a6 !important;
+  color: #fdc704 !important;
 }
 
 .upload-dialog {
@@ -473,7 +473,7 @@ const resetForm = () => {
 }
 
 .upload-avatar {
-  background: #14b8a6 !important;
+  background: #fdc704 !important;
 }
 
 /* Upload Zone */
@@ -488,12 +488,12 @@ const resetForm = () => {
 }
 
 .upload-zone:hover {
-  border-color: #14b8a6;
+  border-color: #fdc704;
   background: #f0fdfa;
 }
 
 .upload-zone--dragover {
-  border-color: #14b8a6;
+  border-color: #fdc704;
   background: #f0fdfa;
   transform: scale(1.02);
 }
@@ -593,7 +593,7 @@ const resetForm = () => {
 
 /* Green Button */
 .btn-green {
-  background: #14b8a6 !important;
+  background: #fdc704 !important;
   color: white !important;
 }
 

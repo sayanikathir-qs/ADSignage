@@ -107,7 +107,7 @@ const duplicateChannel = (channel) => {
           class="search-input"
         />
         <button class="search-btn">
-          <Search :size="18" color="#14b8a6" />
+          <Search :size="18" color="#fdc704" />
         </button>
       </div>
     </div>
@@ -121,7 +121,7 @@ const duplicateChannel = (channel) => {
       >
         <!-- Left Arrow Icon -->
         <div class="channel-arrow">
-          <ArrowRightCircle :size="36" color="#14b8a6" />
+          <ArrowRightCircle :size="36" color="#fdc704" />
         </div>
 
         <!-- Channel Info -->
@@ -219,7 +219,7 @@ const duplicateChannel = (channel) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: #14b8a6;
+  background-color: #fdc704;
   color: white;
   border: none;
   padding: 0.6rem 1.2rem;
@@ -231,7 +231,7 @@ const duplicateChannel = (channel) => {
 }
 
 .btn-new-channel:hover {
-  background-color: #14b8a6;
+  background-color: #fdc704;
 }
 
 /* Search Bar */
@@ -330,7 +330,7 @@ const duplicateChannel = (channel) => {
 }
 
 .badge-published {
-  background-color:#14b8a6;
+  background-color:#fdc704;
   color: white;
 }
 
@@ -382,6 +382,6 @@ const duplicateChannel = (channel) => {
 }
 .more-options:hover {
   background-color: #f3f4f6;
-  border-color: #14b8a6;
+  border-color: #fdc704;
 }
 </style>

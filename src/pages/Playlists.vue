@@ -76,11 +76,10 @@ const handleConfirmDelete = async () => {
         </button>
       </div>
       <v-btn 
-        color="#14b8a6" 
+        class="btn-primary"  
         variant="flat" 
         prepend-icon="mdi-plus-circle-outline" 
         @click="openCreateDialog" 
-        class="text-none font-weight-bold rounded-lg"
       >
         Create Playlist
       </v-btn>
@@ -103,7 +102,7 @@ const handleConfirmDelete = async () => {
           @click="activePlaylist = playlist"
         >
           <div class="playlist-icon">
-            <v-icon color="#14b8a6" size="28">mdi-play-circle-outline</v-icon>
+            <v-icon color="#e6b505" size="28">mdi-play-circle-outline</v-icon>
           </div>
           <div class="playlist-info">
             <h4>{{ playlist.name }}</h4>
@@ -192,15 +191,15 @@ const handleConfirmDelete = async () => {
 .page-container { padding: 32px 40px; max-width: 1440px; margin: 0 auto; }
 .builder-view { height: 100%; }
 .playlist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-.search-bar { display: flex; align-items: center; width: 300px; background: white; border-radius: 8px; border: 1px solid #14b8a6; overflow: hidden; height: 40px; }
+.search-bar { display: flex; align-items: center; width: 300px; background: white; border-radius: 8px; border: 1px solid #fdc704; overflow: hidden; height: 40px; }
 .search-bar input { flex: 1; border: none; padding: 0 1rem; font-size: 0.9rem; outline: none; height: 100%; }
 .search-bar input::placeholder { color: #9ca3af; }
-.search-btn { background: transparent; border: none; padding: 0 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 100%; border-left: 1px solid #14b8a6; }
+.search-btn { background: transparent; border: none; padding: 0 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 100%; border-left: 1px solid #fdc704; }
 .playlist-wrapper { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); }
 .playlist-list { display: flex; flex-direction: column; gap: 16px; }
 .playlist-item { display: flex; align-items: center; background: white; padding: 16px 24px; border-radius: 12px; border: 1px solid #f3f4f6; gap: 24px; cursor: pointer; transition: all 0.2s; }
-.playlist-item:hover { border-color: #14b8a6; box-shadow: 0 4px 12px rgba(20, 184, 166, 0.1); transform: translateY(-1px); }
-.playlist-icon { width: 48px; height: 48px; border-radius: 50%; border: 1px dashed #14b8a6; background-color: rgba(20, 184, 166, 0.05); display: flex; align-items: center; justify-content: center; }
+.playlist-item:hover { border-color: #fdc704; box-shadow: 0 4px 12px rgba(230, 181, 5, 0.1); transform: translateY(-1px); }
+.playlist-icon { width: 48px; height: 48px; border-radius: 50%; border: 1px dashed #fdc704; background-color: rgba(230, 181, 5, 0.05); display: flex; align-items: center; justify-content: center; }
 .playlist-info { flex: 1; }
 .playlist-info h4 { margin: 0 0 4px 0; color: #1f2937; font-weight: 500; font-size: 1rem; }
 .duration { font-size: 0.75rem; color: #9ca3af; }
@@ -295,7 +294,7 @@ const handleConfirmDelete = async () => {
 
 .form-input:focus {
   outline: none;
-  border-color: #14b8a6;
+  border-color: #fdc704;
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
 }
 
@@ -307,7 +306,7 @@ const handleConfirmDelete = async () => {
 }
 
 .btn-primary {
-  background-color: #14b8a6;
+  background-color: #fdc704;
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -319,7 +318,7 @@ const handleConfirmDelete = async () => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #0d9488;
+  background-color:#fdc704;
 }
 
 .btn-primary:active:not(:disabled) {

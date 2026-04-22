@@ -65,7 +65,7 @@ import { LayoutDashboard, Monitor, Layers, PlaySquare, Image as ImageIcon } from
 }
 
 .logo-icon {
-  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  background: linear-gradient(135deg, #fdc704, #fdc704);
   color: white;
   width: 32px;
   height: 32px;
@@ -100,8 +100,8 @@ import { LayoutDashboard, Monitor, Layers, PlaySquare, Image as ImageIcon } from
 }
 
 .nav-item.active {
-  color: #14b8a6;
+  color: #fdc704;
   background-color: rgba(255, 255, 255, 0.05);
-  border-left-color: #14b8a6;
+  border-left-color: #fdc704;
 }
 </style>

@@ -90,13 +90,13 @@ const publishPlaylist = () => {
     <!-- Header -->
     <div class="builder-header">
       <div class="d-flex align-center ga-2">
-        <v-btn icon="mdi-menu" variant="text" color="#14b8a6"></v-btn>
+        <v-btn icon="mdi-menu" variant="text" color="#fdc704"></v-btn>
         <span class="text-h6 font-weight-bold">{{ props.playlist.name }}</span>
       </div>
       <div class="header-actions">
-        <v-btn prepend-icon="mdi-publish" color="#14b8a6" variant="flat" class="text-none text-white" @click="publishPlaylist">Publish</v-btn>
-        <v-btn prepend-icon="mdi-eye" color="#14b8a6" variant="outlined" class="text-none" @click="handlePreview" :disabled="playlistItems.length === 0">Preview</v-btn>
-        <v-btn prepend-icon="mdi-arrow-left"  color="#14b8a6" variant="flat" class="text-none text-white" @click="emit('back')">  Back</v-btn> 
+        <v-btn prepend-icon="mdi-publish" color="#fdc704" variant="flat"  @click="publishPlaylist">Publish</v-btn>
+        <v-btn prepend-icon="mdi-eye" color="#fdc704" variant="outlined" class="text-none" @click="handlePreview" :disabled="playlistItems.length === 0">Preview</v-btn>
+        <v-btn prepend-icon="mdi-arrow-left"  color="#fdc704" variant="flat"  @click="emit('back')">  Back</v-btn> 
       </div>
     </div>
 
@@ -106,7 +106,7 @@ const publishPlaylist = () => {
       <div class="panel source-panel">
         <p class="text-body-2 text-medium-emphasis mb-4">Use Drag and Drop to add items to playlist</p>
         
-        <v-tabs v-model="activeTab" color="#14b8a6" class="mb-4">
+        <v-tabs v-model="activeTab" color="#fdc704" class="mb-4">
           <v-tab v-for="tab in tabs" :key="tab" :value="tab" class="text-none">{{ tab }}</v-tab>
         </v-tabs>
 
@@ -137,7 +137,7 @@ const publishPlaylist = () => {
       <!-- Right Panel -->
       <div class="panel target-panel">
         <div class="d-flex justify-space-between align-center mb-4 pb-2 border-bottom">
-          <span class="text-subtitle-1 font-weight-bold" style="color: #14b8a6">{{ props.playlist.name }}</span>
+          <span class="text-subtitle-1 font-weight-bold" style="color: #fdc704">{{ props.playlist.name }}</span>
           <v-chip color="error" size="small" class="font-weight-bold rounded text-white">Total Duration - {{ totalDurationFormatted }}</v-chip>
         </div>
 
@@ -165,8 +165,8 @@ const publishPlaylist = () => {
 
           <template #footer v-if="playlistItems.length === 0">
             <div class="empty-drop">
-              <v-icon color="#14b8a6" size="24" class="mr-2">mdi-file-document-outline</v-icon>
-              <span style="color: #14b8a6">Please Drop your Media Files here</span>
+              <v-icon color="#fdc704" size="24" class="mr-2">mdi-file-document-outline</v-icon>
+              <span style="color: #fdc704">Please Drop your Media Files here</span>
             </div>
           </template>
         </draggable>
@@ -273,8 +273,8 @@ const publishPlaylist = () => {
 }
 
 .media-list-item:hover {
-  border-color: #14b8a6;
-  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.1);
+  border-color: #fdc704;
+  box-shadow: 0 4px 12px rgba(253, 199, 4, 0.1);
 }
 
 .item-info {
@@ -302,13 +302,13 @@ const publishPlaylist = () => {
   text-transform: capitalize;
 }
 .bg-indigo { background: #4f46e5; }
-.bg-teal { background: #14b8a6; }
+.bg-teal { background: #fdc704; }
 .bg-warning { background: #f59e0b; }
 .bg-error { background: #ef4444; }
 .bg-grey { background: #9ca3af; }
 
 .border-bottom {
-  border-bottom: 2px solid #14b8a6;
+  border-bottom: 2px solid #fdc704;
   margin-bottom: 24px;
 }
 
@@ -324,7 +324,7 @@ const publishPlaylist = () => {
 .drop-zone.is-empty {
   justify-content: center;
   align-items: center;
-  border: 2px dashed #14b8a6;
+  border: 2px dashed #fdc704;
   background: rgba(20, 184, 166, 0.05);
   border-radius: 8px;
 }

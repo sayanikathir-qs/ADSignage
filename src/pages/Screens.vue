@@ -8,7 +8,7 @@ import { MoreVertical, Monitor } from 'lucide-vue-next'
     <div class="screens-list">
       <div v-for="screen in screens" :key="screen.id" class="card screen-card">
         <div class="screen-preview">
-          <Monitor :size="48" :color="screen.status === 'Online' ? '#14b8a6' : '#9ca3af'" />
+          <Monitor :size="48" :color="screen.status === 'Online' ? '#fdc704' : '#9ca3af'" />
         </div>
         <div class="screen-info">
           <div class="screen-header">
@@ -78,8 +78,8 @@ import { MoreVertical, Monitor } from 'lucide-vue-next'
 }
 
 .status-badge.online {
-  background-color: rgba(20, 184, 166, 0.1);
-  color: #14b8a6;
+  background-color: #fdc704;
+  color: #fdc704;
 }
 
 .status-badge.offline {

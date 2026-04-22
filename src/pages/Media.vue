@@ -488,21 +488,21 @@ onMounted(async () => {
 }
 
 .upload-btn {
-  background: #14b8a6;
+  background: #fdc704;
   color: white;
 }
 
 .upload-btn:hover {
-  background: #0d9488;
+  background: #fdc704;
 }
 
 .folder-btn {
-  background: #14b8a6;
+  background: #fdc704;
   color: white;
 }
 
 .folder-btn:hover {
-  background: #0d9488;
+  background: #fdc704;
 }
 
 /* Stats Grid */
@@ -534,7 +534,7 @@ onMounted(async () => {
 }
 
 .stat-dot--teal {
-  background: #14b8a6;
+  background: #fdc704;
 }
 
 .stat-dot--indigo {
@@ -602,7 +602,7 @@ onMounted(async () => {
 }
 
 .search-input:focus {
-  border-color: #14b8a6;
+  border-color: #fdc704;
 }
 
 .search-input::placeholder {
@@ -637,7 +637,7 @@ onMounted(async () => {
 }
 
 .type-pill--active {
-  background: #14b8a6;
+  background: #fdc704;
   color: white;
 }
 
@@ -675,7 +675,7 @@ onMounted(async () => {
 }
 
 .view-btn--active {
-  background: #14b8a6;
+  background: #fdc704;
   color: white;
 }
 
@@ -832,7 +832,7 @@ onMounted(async () => {
 
 .media-type-badge--image {
   background: #e6f7f4;
-  color: #14b8a6;
+  color: #fdc704;
 }
 
 .media-type-badge--video {
