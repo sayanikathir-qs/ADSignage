@@ -81,7 +81,6 @@ const typeOptions = [
   { title: "PDF", value: "pdf" },
 ];
 
-const customers = computed(() => mediaStore.uniqueCustomers);
 
 const hasActiveFilters = computed(() => {
   return searchValue.value || typeValue.value || customerValue.value;

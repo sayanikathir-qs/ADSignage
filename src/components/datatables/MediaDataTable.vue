@@ -1,4 +1,5 @@
 <script setup>
+import { watch } from 'vue' 
 import { Play, MoreVertical, FileText, Code2, Image as ImageIcon, Video, FileText as FileIcon } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -7,13 +8,32 @@ const props = defineProps({
     required: true,
     default: () => []
   },
+  folders: {
+    type: Array,
+    default: () => []
+  },
   viewMode: {
     type: String,
     default: 'list'
   }
 })
 
-const emit = defineEmits(['download', 'delete', 'preview'])
+// ✅ Consistent kebab-case emits for Vue best practices
+const emit = defineEmits([
+  'preview',
+  'download',
+  'delete',           // for media items
+  'delete-folder',    // ✅ for folders (passes full folder object)
+  'navigate-folder',  // ✅ renamed from navigateFolder
+  'rename-folder'     // ✅ added for consistency
+])
+
+// Watch folders for debugging/initialization if needed
+watch(() => props.folders, (newVal) => {
+  if (newVal && newVal.length > 0) {
+    // Optional: log or trigger side effects
+  }
+}, { immediate: true });
 
 const typeColors = {
   video: { bg: 'rgba(99, 102, 241, 0.15)', text: '#4f46e5', label: 'video', icon: Video },
@@ -33,11 +53,75 @@ const getIconClass = (type) => {
     default:      return 'icon-default'
   }
 }
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+};
 </script>
 
 <template>
   <!-- ======== GRID VIEW ======== -->
   <div v-if="props.viewMode === 'grid'" class="media-grid">
+    <!-- Folder Cards -->
+    <div
+      v-for="folder in props.folders"
+      :key="'folder_' + folder.id"
+      class="media-card folder-card"
+      @click="emit('navigate-folder', folder.id)"
+    >
+      <div class="media-preview" style="background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);">
+        <div class="preview-icon">
+          <v-icon size="56" color="#6b7280">mdi-folder</v-icon>
+        </div>
+        <div class="folder-count-badge">
+          {{ folder.itemCount }} items
+        </div>
+      </div>
+      <div class="media-info">
+        <div class="info-row">
+          <span class="file-name">{{ typeof folder.name === 'object' ? folder.name?.name : folder.name }}</span>
+          <!-- Grid view folder actions -->
+          <v-menu location="bottom end">
+            <template v-slot:activator="{ props }">
+              <v-btn 
+                icon="mdi-dots-vertical" 
+                variant="text" 
+                size="small" 
+                density="comfortable" 
+                v-bind="props" 
+                @click.stop
+              />
+            </template>
+            <v-list density="compact" min-width="160">
+              <v-list-item @click.stop="emit('navigate-folder', folder.id)">
+                <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-folder-open</v-icon></template>
+                <v-list-item-title>Open</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click.stop="emit('rename-folder', folder)">
+                <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-pencil</v-icon></template>
+                <v-list-item-title>Rename</v-list-item-title>
+              </v-list-item>
+              <v-list-item 
+                @click.stop="emit('delete-folder', folder)" 
+                base-color="error"
+              >
+                <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
+                <v-list-item-title>Delete Folder</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </div>
+        <p class="media-customer">Folder</p>
+      </div>
+    </div>
+
+    <!-- Media Cards -->
     <div
       v-for="item in props.items"
       :key="item.id"
@@ -45,11 +129,9 @@ const getIconClass = (type) => {
     >
       <!-- Thumbnail -->
       <div class="card-thumb" :style="{ background: item.gradient }">
-        <!-- Play overlay for video -->
         <button v-if="item.type === 'video'" class="play-btn">
           <Play :size="24" fill="white" color="white" />
         </button>
-        <!-- Badge: duration / resolution / pages -->
         <span v-if="item.duration" class="badge bottom-left">{{ item.duration }}</span>
         <span v-else-if="item.resolution" class="badge bottom-right">{{ item.resolution }}</span>
         <span v-else-if="item.pages" class="badge bottom-right">{{ item.pages }}</span>
@@ -68,11 +150,39 @@ const getIconClass = (type) => {
         >
           {{ getTypeMeta(item.type).label }}
         </span>
+        <!-- Media actions (dots) -->
+        <v-menu location="bottom end">
+          <template v-slot:activator="{ props }">
+            <v-btn 
+              icon="mdi-dots-vertical" 
+              variant="text" 
+              size="x-small" 
+              density="comfortable"
+              class="ml-2"
+              v-bind="props" 
+              @click.stop
+            />
+          </template>
+          <v-list density="compact" min-width="160">
+            <v-list-item @click.stop="emit('preview', item)">
+              <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-eye</v-icon></template>
+              <v-list-item-title>Preview</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click.stop="emit('download', item)">
+              <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-download</v-icon></template>
+              <v-list-item-title>Download</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click.stop="emit('delete', item)" base-color="error">
+              <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
+              <v-list-item-title>Delete</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </div>
 
     <!-- Empty state -->
-    <div v-if="props.items.length === 0" class="empty-state">
+    <div v-if="props.items.length === 0 && props.folders.length === 0" class="empty-state">
       <FileText :size="40" color="var(--color-text-muted)" />
       <p>No media files found</p>
     </div>
@@ -92,6 +202,61 @@ const getIconClass = (type) => {
         </tr>
       </thead>
       <tbody>
+        <!-- Folders -->
+        <tr
+          v-for="folder in props.folders"
+          :key="'folder_' + folder.id"
+          class="table-row folder-row"
+          @click="emit('navigate-folder', folder.id)"
+        >
+          <td>
+            <div class="table-name-cell">
+              <div class="table-thumb folder-icon">
+                <v-icon size="18" color="white">mdi-folder</v-icon>
+              </div>
+              <span class="file-name">{{ folder.name }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="file-type-badge badge-folder">folder</span>
+          </td>
+          <td class="table-cell-secondary">-</td>
+          <td class="table-cell-secondary">{{ folder.itemCount || 0 }} items</td>
+          <td class="table-cell-secondary">{{ formatDate(folder.createdAt) }}</td>
+          <td>
+            <div class="table-actions">
+              <v-menu location="bottom end">
+                <template v-slot:activator="{ props }">
+                  <button class="btn-icon" v-bind="props" @click.stop>
+                    <MoreVertical :size="16" />
+                  </button>
+                </template>
+                <v-list density="compact" min-width="160">
+                  <v-list-item @click.stop="emit('navigate-folder', folder.id)">
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-folder-open</v-icon></template>
+                    <v-list-item-title>Open</v-list-item-title>
+                  </v-list-item>
+                  
+                  <v-list-item @click.stop="emit('rename-folder', folder)">
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-pencil</v-icon></template>
+                    <v-list-item-title>Rename</v-list-item-title>
+                  </v-list-item>
+                  
+                  <!-- ✅ DELETE FOLDER - emits full folder object -->
+                  <v-list-item 
+                    @click.stop="emit('delete-folder', folder)" 
+                    base-color="error"
+                  >
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
+                    <v-list-item-title>Delete Folder</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Media Items -->
         <tr
           v-for="item in props.items"
           :key="item.id"
@@ -107,16 +272,11 @@ const getIconClass = (type) => {
             </div>
           </td>
           <td>
-            <span
-              class="file-type-badge"
-              :class="`badge-${item.type}`"
-            >
-              {{ item.type }}
-            </span>
+            <span class="file-type-badge" :class="`badge-${item.type}`">{{ item.type }}</span>
           </td>
           <td class="table-cell-secondary">{{ item.customer }}</td>
           <td class="table-cell-secondary">{{ item.size }}</td>
-          <td class="table-cell-secondary">{{ item.date }}</td>
+          <td class="table-cell-secondary">{{ formatDate(item.date) }}</td>
           <td>
             <div class="table-actions">
               <v-menu location="bottom end">
@@ -126,28 +286,16 @@ const getIconClass = (type) => {
                   </button>
                 </template>
                 <v-list density="compact" min-width="160">
-                  <v-list-item @click.stop="() => {}">
-                    <template v-slot:prepend>
-                      <v-icon size="small" class="mr-2">mdi-monitor-screenshot</v-icon>
-                    </template>
-                    <v-list-item-title>Set to screen</v-list-item-title>
-                  </v-list-item>
                   <v-list-item @click.stop="emit('preview', item)">
-                    <template v-slot:prepend>
-                      <v-icon size="small" class="mr-2">mdi-eye</v-icon>
-                    </template>
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-eye</v-icon></template>
                     <v-list-item-title>Preview</v-list-item-title>
                   </v-list-item>
                   <v-list-item @click.stop="emit('download', item)">
-                    <template v-slot:prepend>
-                      <v-icon size="small" class="mr-2">mdi-download</v-icon>
-                    </template>
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-download</v-icon></template>
                     <v-list-item-title>Download</v-list-item-title>
                   </v-list-item>
                   <v-list-item @click.stop="emit('delete', item)" base-color="error">
-                    <template v-slot:prepend>
-                      <v-icon size="small" class="mr-2">mdi-delete</v-icon>
-                    </template>
+                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
                     <v-list-item-title>Delete</v-list-item-title>
                   </v-list-item>
                 </v-list>
@@ -155,7 +303,9 @@ const getIconClass = (type) => {
             </div>
           </td>
         </tr>
-        <tr v-if="props.items.length === 0">
+        
+        <!-- Empty state for table -->
+        <tr v-if="props.items.length === 0 && props.folders.length === 0">
           <td colspan="6" class="empty-cell">
             <FileText :size="24" />
             <span>No media files found</span>
@@ -167,247 +317,118 @@ const getIconClass = (type) => {
 </template>
 
 <style scoped>
-/* ============================================
-   TABLE / LIST VIEW — Light Theme
-   ============================================ */
-
-.media-table-container {
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
-
-/* Table base */
-.media-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-/* Header */
-.media-table thead {
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.media-table th {
-  text-align: left;
-  padding: 0.875rem 1.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Column widths */
-.col-name    { min-width: 280px; }
-.col-type    { width: 100px; }
-.col-customer{ min-width: 140px; }
-.col-size    { width: 100px; }
-.col-date    { width: 130px; }
-.col-actions { width: 48px; text-align: right; }
-
-/* Body rows */
-.media-table tbody tr {
-  border-bottom: 1px solid var(--color-border-light);
-  transition: all 0.15s ease;
-}
-
-.media-table tbody tr:hover {
-  background: var(--color-bg-hover);
-}
-
-/* Selected row — dark surface */
-.media-table tbody tr.selected {
-  background: var(--color-dark-surface);
-}
-
-.media-table tbody tr.selected td {
-  color: var(--color-text-inverse);
-}
-
-.media-table tbody tr.selected .table-cell-secondary,
-.media-table tbody tr.selected .file-type-badge {
-  opacity: 0.8;
-}
-
-/* Cells */
-.media-table td {
-  padding: 1rem 1.25rem;
-  vertical-align: middle;
-}
-
-.table-cell-secondary {
-  color: var(--color-text-secondary);
-}
-
-/* Name cell */
-.table-name-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-}
-
-.file-name {
-  font-weight: 500;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 240px;
-}
-
-/* Selected row name text */
-.media-table tbody tr.selected .file-name {
-  color: var(--color-text-inverse);
-}
-
-/* File icon thumbnails */
-.table-thumb {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.icon-video { background: linear-gradient(135deg, #166534, #14532d); }
-.icon-image { background: linear-gradient(135deg, #334155, #1e293b); }
-.icon-html  { background: linear-gradient(135deg, #9a3412, #7c2d12); }
-.icon-pdf   { background: linear-gradient(135deg, #991b1b, #7f1d1d); }
-.icon-default { background: linear-gradient(135deg, #475569, #334155); }
-
-/* Type badges in table */
-.file-type-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.625rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: lowercase;
-}
-
-.badge-html  { background: rgba(234, 179, 8, 0.15); color: #ca8a04; }
-.badge-video { background: rgba(99, 102, 241, 0.15); color: #4f46e5; }
-.badge-image { background: rgba(20, 184, 166, 0.15); color: #0d9488; }
-.badge-pdf   { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
-
-/* Action button */
-.table-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.btn-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.btn-icon:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
-}
-
-/* Empty state */
-.empty-cell {
-  text-align: center;
-  color: var(--color-text-muted);
-  padding: 3rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-/* ============================================
-   GRID VIEW — Light Theme (FIXED)
-   ============================================ */
-
+/* ===== GRID VIEW STYLES ===== */
 .media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1.5rem;
+  gap: 20px;
 }
 
-/* FIX: Force white background and light borders */
 .media-card {
-  background: var(--color-bg-surface); /* White */
-  border: 1px solid var(--color-border); /* Light Border */
-  border-radius: var(--radius-card);
+  background: white;
+  border-radius: 12px;
   overflow: hidden;
+  border: 1px solid #e5e7eb;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
   display: flex;
   flex-direction: column;
 }
 
 .media-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
-.card-thumb {
+.folder-card {
+  border: 2px dashed #e5e7eb;
+}
+
+.folder-card:hover {
+  border-color: #fdc704;
+  background: #fffbeb;
+}
+
+.media-preview {
+  height: 160px;
   position: relative;
-  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.preview-icon {
+  opacity: 0.9;
+}
+
+.folder-count-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.card-thumb {
+  height: 140px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px 8px 0 0;
+}
+
 .play-btn {
-  width: 44px;
-  height: 44px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.3);
+  border: none;
   border-radius: 50%;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.2s;
 }
 
 .play-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .badge {
   position: absolute;
-  background: rgba(0, 0, 0, 0.6);
-  color: #e2e8f0;
-  font-size: 0.7rem;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
 }
 
-.badge.bottom-left  { bottom: 8px; left: 8px; }
-.badge.bottom-right { bottom: 8px; right: 8px; }
-.html-badge         { color: #fcd34d; }
+.badge.bottom-left {
+  bottom: 8px;
+  left: 8px;
+}
 
-/* FIX: Footer background and text color for light mode */
+.badge.bottom-right {
+  bottom: 8px;
+  right: 8px;
+}
+
+.html-badge {
+  background: rgba(234, 179, 8, 0.9);
+}
+
 .card-footer {
-  background: var(--color-bg-surface); /* White */
-  padding: 0.75rem;
+  padding: 12px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .card-meta {
@@ -415,68 +436,224 @@ const getIconClass = (type) => {
   min-width: 0;
 }
 
-/* FIX: Text should be dark (primary) */
 .card-name {
   display: block;
-  font-size: 0.8rem;
-  color: var(--color-text-primary); /* Dark Text */
+  font-size: 13px;
   font-weight: 500;
+  color: #1a1a2e;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 2px;
 }
 
 .card-customer {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  margin-top: 2px;
+  font-size: 11px;
+  color: #9ca3af;
 }
 
-/* Shared type badge */
 .type-badge {
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
   border-radius: 4px;
-  text-transform: lowercase;
+  text-transform: capitalize;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-/* Empty state (grid) */
+.media-info {
+  padding: 12px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.file-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1a2e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.media-customer {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+}
+
 .empty-state {
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 4rem 0;
-  color: var(--color-text-muted);
+  justify-content: center;
+  padding: 48px;
+  color: #9ca3af;
+  text-align: center;
 }
 
-/* Responsive */
+/* ===== TABLE VIEW STYLES ===== */
+.media-table-container {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.media-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.media-table th {
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.media-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #1a1a2e;
+}
+
+.media-table tr:last-child td {
+  border-bottom: none;
+}
+
+.media-table tr:hover {
+  background: #f9fafb;
+}
+
+.folder-row {
+  background: #fffbeb;
+  border-left: 3px solid #fdc704;
+}
+
+.folder-row:hover {
+  background: #fef3c7;
+}
+
+.table-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.table-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.folder-icon {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+}
+
+.icon-video { background: rgba(99, 102, 241, 0.15); }
+.icon-image { background: rgba(20, 184, 166, 0.15); }
+.icon-html  { background: rgba(234, 179, 8, 0.15); }
+.icon-pdf   { background: rgba(239, 68, 68, 0.15); }
+
+.file-type-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+.badge-folder {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.badge-video { background: rgba(99, 102, 241, 0.15); color: #4f46e5; }
+.badge-image { background: rgba(20, 184, 166, 0.15); color: #0d9488; }
+.badge-html  { background: rgba(234, 179, 8, 0.15); color: #ca8a04; }
+.badge-pdf   { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+
+.table-cell-secondary {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.btn-icon:hover {
+  background: #f3f4f6;
+  color: #1a1a2e;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 48px;
+  color: #9ca3af;
+}
+
+.empty-cell span {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
-  .media-table {
-    font-size: 0.8125rem;
+  .media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
-  
-  .media-table th,
-  .media-table td {
-    padding: 0.75rem 1rem;
-  }
-  
-  .col-name { min-width: 200px; }
-  .file-name { max-width: 160px; }
-  .col-customer, .col-size, .col-date { min-width: auto; }
 }
 
 @media (max-width: 768px) {
-  .media-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 1rem;
+  .media-table-container {
+    overflow-x: auto;
   }
   
-  .col-customer { display: none; }
+  .media-table {
+    min-width: 700px;
+  }
+  
+  .col-customer,
+  .col-size {
+    display: none;
+  }
 }
 </style>

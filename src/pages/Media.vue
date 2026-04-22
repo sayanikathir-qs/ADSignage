@@ -7,13 +7,26 @@
         <p class="page-subtitle">Manage all uploaded assets across customers</p>
       </div>
       <div class="header-actions">
-        <v-btn class="action-btn upload-btn" prepend-icon="mdi-upload" @click="openUploadDialog">
+        <v-btn class="action-btn upload-btn" prepend-icon="mdi-upload" @click="openUploadDialog" :disabled="!currentFolderId">
           Upload
         </v-btn>
-        <v-btn class="action-btn folder-btn" prepend-icon="mdi-folder-plus">
+        <v-btn class="action-btn folder-btn" prepend-icon="mdi-folder-plus" @click="openCreateFolderDialog">
           New Folder
         </v-btn>
       </div>
+    </div>
+
+    <!-- Breadcrumb Navigation -->
+    <div class="breadcrumb-nav">
+      <template v-for="(folder, index) in folderPath" :key="folder.id">
+        <span class="breadcrumb-separator">/</span>
+        <button 
+          class="breadcrumb-item" 
+          @click="navigateToFolder(folder.id, index)"
+        >
+          {{ folder.name }}
+        </button>
+      </template>
     </div>
 
     <!-- Stats Cards -->
@@ -31,7 +44,7 @@
         <v-card-text>
           <div class="stat-dot stat-dot--indigo"></div>
           <p class="stat-label">TOTAL FILES</p>
-          <h2 class="stat-value">18,429</h2>
+          <h2 class="stat-value">{{ totalFiles }}</h2>
           <p class="stat-sub">Across all customers</p>
         </v-card-text>
       </v-card>
@@ -115,15 +128,68 @@
       <v-progress-circular indeterminate color="primary" size="40" />
     </div>
 
-    <!-- Empty State -->
-    <div v-else-if="displayedMedia.length === 0" class="empty-state">
-      <v-icon size="80" color="grey-lighten-2" class="mb-4">mdi-folder-image</v-icon>
-      <h3 class="text-h5 mb-2">No media found</h3>
-      <p class="text-body-2 text-medium-emphasis">Upload files to get started</p>
+    <!-- Empty State - No Folders -->
+    <div v-else-if="!currentFolderId && currentFolders.length === 0 && displayedMedia.length === 0" class="empty-state">
+      <v-icon size="80" color="grey-lighten-2" class="mb-4">mdi-folder-plus</v-icon>
+      <h3 class="text-h5 mb-2">Start by creating a folder</h3>
+      <p class="text-body-2 text-medium-emphasis mb-4">Organize your media by creating folders</p>
+      <v-btn class="action-btn folder-btn" prepend-icon="mdi-folder-plus" @click="openCreateFolderDialog">
+        Create Your First Folder
+      </v-btn>
+    </div>
+
+    <!-- Empty State - Folder Empty -->
+    <div v-else-if="currentFolderId && currentFolders.length === 0 && displayedMedia.length === 0" class="empty-state">
+      <v-icon size="80" color="grey-lighten-2" class="mb-4">mdi-folder-open</v-icon>
+      <h3 class="text-h5 mb-2">This folder is empty</h3>
+      <p class="text-body-2 text-medium-emphasis mb-4">Upload files to this folder to get started</p>
+      <v-btn class="action-btn upload-btn" prepend-icon="mdi-upload" @click="openUploadDialog">
+        Upload Files
+      </v-btn>
     </div>
 
     <!-- Media Grid -->
     <div v-else-if="viewMode === 'grid'" class="media-grid">
+      <!-- Folder Cards -->
+      <div
+        v-for="folder in currentFolders"
+        :key="'folder_' + folder.id"
+        class="media-card folder-card"
+        @click="navigateToFolder(folder.id)"
+      >
+        <div class="media-preview" style="background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);">
+          <div class="preview-icon">
+            <v-icon size="56" color="#6b7280">mdi-folder</v-icon>
+          </div>
+          <div class="folder-count-badge">
+            {{ folder.itemCount }} items
+          </div>
+        </div>
+        <div class="media-info">
+          <div class="info-row">
+            <span class="media-name" :title="folder.name">{{ folder.name }}</span>
+            <v-menu location="bottom end">
+              <template v-slot:activator="{ props }">
+                <v-btn icon="mdi-dots-vertical" variant="text" size="small" density="comfortable" 
+                       v-bind="props" @click.stop></v-btn>
+              </template>
+              <v-list density="compact" min-width="160">
+                <v-list-item @click.stop="openRenameFolderDialog(folder)">
+                  <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-pencil</v-icon></template>
+                  <v-list-item-title>Rename</v-list-item-title>
+                </v-list-item>
+                <v-list-item @click.stop="openDeleteFolderDialog(folder)" base-color="error">
+                  <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
+                  <v-list-item-title>Delete Folder</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
+          <p class="media-customer">Folder • {{ formatDate(folder.createdAt) }}</p>
+        </div>
+      </div>
+
+      <!-- Media Cards -->
       <div
         v-for="item in displayedMedia"
         :key="item.id"
@@ -178,10 +244,6 @@
                   <v-btn icon="mdi-dots-vertical" variant="text" size="small" density="comfortable" v-bind="props" @click.stop></v-btn>
                 </template>
                 <v-list density="compact" min-width="160">
-                  <v-list-item @click.stop="() => {}">
-                    <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-monitor-screenshot</v-icon></template>
-                    <v-list-item-title>Set to screen</v-list-item-title>
-                  </v-list-item>
                   <v-list-item @click.stop="handlePreview(item)">
                     <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-eye</v-icon></template>
                     <v-list-item-title>Preview</v-list-item-title>
@@ -205,18 +267,31 @@
 
     <!-- Media List View -->
     <MediaDataTable
-      v-else
-      :items="displayedMedia"
-      view-mode="list"
-      @preview="handlePreview"
-      @download="handleDownload"
-      @delete="openDeleteDialog"
+  v-else
+  :items="displayedMedia"
+  :folders="currentFolders"
+  view-mode="list"
+  @preview="handlePreview"
+  @download="handleDownload"
+  @delete="openDeleteDialog"
+  @delete-folder="openDeleteFolderDialog" 
+  @navigate-folder="navigateToFolder"     
+  @rename-folder="openRenameFolderDialog"  
+/>
+
+    <!-- Create Folder Dialog -->
+    <CreateFolderDialog
+      v-model="createFolderDialog.open"
+      :loading="createFolderDialog.loading"
+      :folder-name="createFolderDialog.folderName"
+      @submit="handleCreateFolderSubmit"
     />
 
     <!-- Upload Dialog -->
     <MediaUploadDialog
       v-model="uploadDialog.open"
       :loading="uploadDialog.loading"
+      :current-folder-id="currentFolderId"
       @submit="handleUploadSubmit"
     />
 
@@ -233,6 +308,21 @@
       cancel-text="Cancel"
       :loading="deleteDialog.loading"
       @confirm="handleConfirmDelete"
+    />
+
+    <!-- Delete Folder Dialog -->
+    <ConfirmationDialog
+      v-model="deleteFolderDialog.open"
+      title="Delete Folder"
+      :message="`Are you sure you want to delete folder '${deleteFolderDialog.folder?.name}'?`"
+      detail="All contents will be permanently deleted."
+      icon="mdi-folder-alert"
+      icon-color="error"
+      confirm-text="Delete"
+      confirm-color="error"
+      cancel-text="Cancel"
+      :loading="deleteFolderDialog.loading"
+      @confirm="handleConfirmDeleteFolder"
     />
 
     <!-- Preview Dialog -->
@@ -264,6 +354,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useMediaStore } from "@/stores/media";
 import MediaUploadDialog from "@/components/dialogs/MediaUploadDialog.vue";
+import CreateFolderDialog from "@/components/dialogs/CreateFolderDialog.vue";
 import MediaDataTable from "@/components/datatables/MediaDataTable.vue";
 import ConfirmationDialog from "@/components/dialogs/ConfirmationDialog.vue";
 
@@ -273,16 +364,30 @@ const searchValue = ref("");
 const activeType = ref("all");
 const viewMode = ref("grid");
 const sortBy = ref("latest");
+const currentFolderId = ref(null);
+const folderPath = ref([]);
 
 const uploadDialog = ref({
   open: false,
   loading: false,
 });
 
+const createFolderDialog = ref({
+  open: false,
+  loading: false,
+  folderName: "",
+});
+
 const deleteDialog = ref({
   open: false,
   loading: false,
   item: null,
+});
+
+const deleteFolderDialog = ref({
+  open: false,
+  loading: false,
+  folder: null,
 });
 
 const previewDialog = ref({
@@ -298,8 +403,23 @@ const typeFilters = [
   { label: "PDF", value: "pdf" },
 ];
 
+const totalFiles = computed(() => {
+  return mediaStore.mediaItems.length.toLocaleString();
+});
+
+const currentFolders = computed(() => {
+  return mediaStore.folders.filter(f => f.parentId === currentFolderId.value);
+});
+
 const displayedMedia = computed(() => {
   let filtered = [...mediaStore.mediaItems];
+
+  // Filter by current folder
+  if (currentFolderId.value) {
+    filtered = filtered.filter(item => item.folderId === currentFolderId.value);
+  } else {
+    filtered = filtered.filter(item => !item.folderId || item.folderId === null);
+  }
 
   // Filter by type
   if (activeType.value !== "all") {
@@ -355,17 +475,18 @@ const getIconColor = (type) => {
   }
 };
 
-const handleSearch = () => {
-  // Search is handled by computed
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
+
+const handleSearch = () => {};
 
 const handleTypeChange = (type) => {
   activeType.value = type;
 };
 
-const handleSort = () => {
-  // Sort is handled by computed
-};
+const handleSort = () => {};
 
 const handleCardClick = (item) => {
   handlePreview(item);
@@ -376,6 +497,70 @@ const handlePreview = (item) => {
   previewDialog.value.open = true;
 };
 
+const navigateToRoot = () => {
+  currentFolderId.value = null;
+  folderPath.value = [];
+};
+
+const navigateToFolder = (folderId, upToIndex = -1) => {
+  if (upToIndex >= 0) {
+    folderPath.value = folderPath.value.slice(0, upToIndex + 1);
+  } else {
+    const folder = mediaStore.folders.find(f => f.id === folderId);
+    if (folder) {
+      folderPath.value.push(folder);
+    }
+  }
+  currentFolderId.value = folderId;
+};
+
+const openCreateFolderDialog = () => {
+  createFolderDialog.value.folderName = "";
+  createFolderDialog.value.open = true;
+};
+
+// ✅ CORRECT
+const handleCreateFolderSubmit = async (payload) => {
+  // payload is already { name: "sfsg", parentId: null }
+  createFolderDialog.value.loading = true;
+  try {
+    await mediaStore.createFolder(payload);
+    createFolderDialog.value.open = false;
+  } catch (error) {
+    console.error("Create folder error:", error);
+  } finally {
+    createFolderDialog.value.loading = false;
+  }
+};
+
+// In media.vue script setup
+const openRenameFolderDialog = (folder) => {
+  // folder is now the full object, not just ID
+  const newName = prompt("Rename folder:", folder.name);
+  if (newName && newName.trim()) {
+    mediaStore.updateFolder(folder.id, { name: newName.trim() });
+  }
+};
+
+const openDeleteFolderDialog = (folder) => {
+  deleteFolderDialog.value.folder = folder;
+  deleteFolderDialog.value.open = true;
+};
+
+const handleConfirmDeleteFolder = async () => {
+  if (!deleteFolderDialog.value.folder) return;
+  deleteFolderDialog.value.loading = true;
+  try {
+    await mediaStore.deleteFolder(deleteFolderDialog.value.folder.id);
+    deleteFolderDialog.value.open = false;
+  } catch (error) {
+    console.error("Delete folder error:", error);
+  } finally {
+    deleteFolderDialog.value.loading = false;
+    deleteFolderDialog.value.folder = null;
+  }
+};
+
 const openUploadDialog = () => {
   uploadDialog.value.open = true;
 };
@@ -383,21 +568,13 @@ const openUploadDialog = () => {
 const handleUploadSubmit = async (payload) => {
   uploadDialog.value.loading = true;
   try {
-    console.log("Payload:", payload);
-    
-    // 1. Upload the file
-    await mediaStore.uploadMedia(payload);
-    
-    // 2. CLOSE THE DIALOG
+    await mediaStore.uploadMedia({
+      ...payload,
+      folderId: currentFolderId.value
+    });
     uploadDialog.value.open = false;
-    
-    // 3. CRITICAL: Refresh the media list so the new file appears
-    // (Assuming your store has a function to fetch the list, e.g., fetchMedia)
-    await mediaStore.fetchMedia(); 
-    
   } catch (error) {
     console.error("Upload error:", error);
-    // TODO: Show an error toast to the user
   } finally {
     uploadDialog.value.loading = false;
   }
@@ -405,7 +582,6 @@ const handleUploadSubmit = async (payload) => {
 
 const handleDownload = (item) => {
   if (!item) return;
-  // Trigger mock download
   const blob = new Blob([`Mock content for ${item.name}`], { type: "text/plain" });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -424,7 +600,6 @@ const openDeleteDialog = (item) => {
 
 const handleConfirmDelete = async () => {
   if (!deleteDialog.value.item) return;
-
   deleteDialog.value.loading = true;
   try {
     await mediaStore.deleteMedia(deleteDialog.value.item.id);
@@ -439,6 +614,7 @@ const handleConfirmDelete = async () => {
 
 onMounted(async () => {
   await mediaStore.fetchMedia();
+  await mediaStore.fetchFolders();
   await mediaStore.fetchStats();
 });
 </script>

@@ -5,6 +5,7 @@ import { useAppStore } from "@/stores/app";
 export const useMediaStore = defineStore("media", {
   state: () => ({
     mediaItems: [],
+    folders: [],
     loading: false,
     stats: {
       totalStorage: "2.4 TB",
@@ -12,7 +13,6 @@ export const useMediaStore = defineStore("media", {
       videos: "4,218",
       images: "12,847",
     },
-
     filters: {
       search: null,
       type: null,
@@ -64,10 +64,6 @@ export const useMediaStore = defineStore("media", {
 
     appStore: () => useAppStore(),
 
-    uniqueCustomers: (state) => {
-      const customers = new Set(state.mediaItems.map((item) => item.customer));
-      return Array.from(customers).filter(Boolean);
-    },
 
     countByType: (state) => {
       const counts = {
@@ -86,59 +82,165 @@ export const useMediaStore = defineStore("media", {
 
       return counts;
     },
+
+    getFolderItemCount: (state) => (folderId) => {
+      return state.mediaItems.filter(item => item.folderId === folderId).length;
+    },
   },
 
   actions: {
     async fetchMedia() {
+      this.loading = true;
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        const saved = localStorage.getItem('adsignage_media');
+        this.mediaItems = saved ? JSON.parse(saved) : mockMedia;
+        
+        return { success: true, data: this.mediaItems };
+      } catch (error) {
+        this.mediaItems = mockMedia;
+        return this.appStore.handleError(error, { context: "Error fetching media" });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchFolders() {
+      this.loading = true;
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        
+        const saved = localStorage.getItem('adsignage_folders');
+        if (saved) {
+          this.folders = JSON.parse(saved);
+        } else {
+          // Initialize with empty folders array
+          this.folders = [];
+        }
+        
+        return { success: true, data: this.folders };
+      } catch (error) {
+        return this.appStore.handleError(error, { context: "Error fetching folders" });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // Inside useMediaStore actions:
+async createFolder(payload) {
   this.loading = true;
   try {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    // ✅ Load from localStorage if it exists, otherwise fallback to mockData
-    const saved = localStorage.getItem('adsignage_media');
-    this.mediaItems = saved ? JSON.parse(saved) : mockMedia;
-    
-    return { success: true, data: this.mediaItems };
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // ✅ Safely handle both string and object payloads
+    const rawName = typeof payload === 'object' ? payload.name : payload;
+    const parentId = typeof payload === 'object' ? payload.parentId : null;
+
+    const newFolder = {
+      id: `folder_${Date.now()}`,
+      name: String(rawName || '').trim(), // 🔒 Force string type
+      parentId: parentId || null,
+      createdAt: new Date().toISOString(),
+      itemCount: 0,
+    };
+
+    this.folders.push(newFolder);
+    this.saveFoldersToStorage();
+
+    return { success: true, message: "Folder created successfully", data: newFolder };
   } catch (error) {
-    this.mediaItems = mockMedia; // Fallback on error
-    return this.appStore.handleError(error, { context: "Error fetching media" });
+    return this.appStore?.handleError(error, { context: "Error creating folder" }) || { success: false, error };
+  } finally {
+    this.loading = false;
+  }
+},
+
+    async updateFolder(folderId, updates) {
+      this.loading = true;
+      try {
+        const folder = this.folders.find(f => f.id === folderId);
+        if (folder) {
+          Object.assign(folder, updates);
+          this.saveFoldersToStorage();
+          return { success: true, message: "Folder updated successfully", data: folder };
+        }
+        return { success: false, error: "Folder not found" };
+      } catch (error) {
+        return this.appStore.handleError(error, { context: "Error updating folder" });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deleteFolder(folderId) {
+  this.loading = true;
+  try {
+    // 1️⃣ Get all descendant folder IDs (recursive)
+    const getDescendantIds = (id) => {
+      const children = this.folders.filter(f => f.parentId === id);
+      return [id, ...children.flatMap(child => getDescendantIds(child.id))];
+    };
+    const idsToDelete = getDescendantIds(folderId);
+
+    // 2️⃣ Remove all media items in any of these folders
+    this.mediaItems = this.mediaItems.filter(item => 
+      !idsToDelete.includes(item.folderId)
+    );
+
+    // 3️⃣ Remove all folders (including subfolders)
+    this.folders = this.folders.filter(f => !idsToDelete.includes(f.id));
+
+    // 4️️ Persist changes
+    this.saveMediaToStorage();
+    this.saveFoldersToStorage();
+
+    // 5️⃣ If current folder was deleted, navigate up
+    if (idsToDelete.includes(this.currentFolderId)) {
+      // Navigate to parent or root
+      const parentFolder = this.folders.find(f => f.id === this.folders.find(f => f.id === folderId)?.parentId);
+      this.currentFolderId = parentFolder?.id || null;
+    }
+
+    return { success: true, message: "Folder and contents deleted successfully" };
+  } catch (error) {
+    return this.appStore.handleError(error, { context: "Error deleting folder" });
   } finally {
     this.loading = false;
   }
 },
 
     async uploadMedia(mediaData) {
-  this.loading = true;
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 800));
+      this.loading = true;
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 800));
 
-    const newMedia = {
-      id: Date.now(), // ✅ Better than length + 1
-      name: mediaData.name,
-      type: mediaData.type,
-      size: mediaData.size || "0 KB",
-      date: new Date().toISOString().split("T")[0],
-      customer: mediaData.customer,
-      duration: mediaData.duration || null,
-      resolution: mediaData.resolution || null,
-      gradient: mediaData.gradient || "linear-gradient(135deg,#3730a3,#1e3a5f)",
-    };
+        const newMedia = {
+          id: Date.now(),
+          name: mediaData.name,
+          type: mediaData.type,
+          size: mediaData.size || "0 KB",
+          date: new Date().toISOString().split("T")[0],
+          customer: mediaData.customer,
+          folderId: mediaData.folderId || null,
+          duration: mediaData.duration || null,
+          resolution: mediaData.resolution || null,
+          gradient: mediaData.gradient || "linear-gradient(135deg,#3730a3,#1e3a5f)",
+        };
 
-    this.mediaItems.unshift(newMedia);
-    
-    // ✅ Save to localStorage so it survives refresh
-    localStorage.setItem('adsignage_media', JSON.stringify(this.mediaItems));
+        this.mediaItems.unshift(newMedia);
+        this.saveMediaToStorage();
 
-    return { success: true, message: "Media uploaded successfully", data: newMedia };
-  } catch (error) {
-    return this.appStore.handleError(error, { context: "Error uploading media" });
-  } finally {
-    this.loading = false;
-  }
-},
+        return { success: true, message: "Media uploaded successfully", data: newMedia };
+      } catch (error) {
+        return this.appStore.handleError(error, { context: "Error uploading media" });
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async deleteMedia(mediaId) {
       this.loading = true;
-
       try {
         await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -146,6 +248,7 @@ export const useMediaStore = defineStore("media", {
 
         if (index !== -1) {
           const deleted = this.mediaItems.splice(index, 1)[0];
+          this.saveMediaToStorage();
 
           return {
             success: true,
@@ -174,6 +277,14 @@ export const useMediaStore = defineStore("media", {
           context: "Error fetching media stats",
         });
       }
+    },
+
+    saveMediaToStorage() {
+      localStorage.setItem('adsignage_media', JSON.stringify(this.mediaItems));
+    },
+
+    saveFoldersToStorage() {
+      localStorage.setItem('adsignage_folders', JSON.stringify(this.folders));
     },
 
     setSearchFilter(value) {

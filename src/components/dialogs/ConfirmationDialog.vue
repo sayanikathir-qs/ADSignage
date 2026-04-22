@@ -1,32 +1,33 @@
+<!-- src/components/dialogs/ConfirmationDialog.vue -->
 <template>
-  <v-dialog v-model="isOpen" max-width="500" persistent>
+  <v-dialog v-model="dialogOpen" max-width="400" persistent>
     <v-card>
-      <!-- Header with Icon -->
-      <v-card-title class="d-flex align-center ga-3 pa-5 pb-2">
-        <v-avatar :color="iconColor" size="42" variant="tonal">
-          <v-icon :color="iconColor">{{ icon }}</v-icon>
-        </v-avatar>
-        <span class="text-h6">{{ title }}</span>
+      <v-card-title class="dialog-header">
+        <v-icon :color="iconColor" class="mr-3" :size="24">{{ icon }}</v-icon>
+        <span class="dialog-title">{{ title }}</span>
       </v-card-title>
-
-      <v-divider class="mx-5" />
-
-      <!-- Content -->
-      <v-card-text class="pa-5">
-        <p class="text-body-1 mb-2">{{ message }}</p>
-        <p v-if="detail" class="text-caption text-medium-emphasis">{{ detail }}</p>
+      
+      <v-card-text>
+        <p class="message-text">{{ message }}</p>
+        <p v-if="detail" class="detail-text">{{ detail }}</p>
       </v-card-text>
-
-      <v-divider class="mx-5" />
-
-      <!-- Actions -->
-      <v-card-actions class="pa-5">
-        <v-spacer />
-        <v-btn variant="outlined" :disabled="loading" @click="handleCancel">
-          {{ cancelText }}
+      
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn
+          variant="text"
+          @click="handleCancel"
+          :disabled="loading"
+        >
+          {{ cancelText || 'Cancel' }}
         </v-btn>
-        <v-btn :color="confirmColor" :loading="loading" @click="handleConfirm">
-          {{ confirmText }}
+        <v-btn
+          :color="confirmColor || 'primary'"
+          variant="flat"
+          @click="handleConfirm"
+          :loading="loading"
+        >
+          {{ confirmText || 'Confirm' }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -34,73 +35,64 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch } from 'vue';
 
 const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false,
-  },
-  title: {
-    type: String,
-    default: "Confirm",
-  },
-  message: {
-    type: String,
-    required: true,
-  },
-  detail: {
-    type: String,
-    default: "",
-  },
-  icon: {
-    type: String,
-    default: "mdi-alert-circle",
-  },
-  iconColor: {
-    type: String,
-    default: "warning",
-  },
-  confirmText: {
-    type: String,
-    default: "Confirm",
-  },
-  confirmColor: {
-    type: String,
-    default: "error",
-  },
-  cancelText: {
-    type: String,
-    default: "Cancel",
-  },
-  loading: {
-    type: Boolean,
-    default: false,
-  },
+  modelValue: Boolean,
+  title: String,
+  message: String,
+  detail: String,
+  icon: { type: String, default: 'mdi-alert' },
+  iconColor: { type: String, default: 'warning' },
+  confirmText: String,
+  confirmColor: String,
+  cancelText: String,
+  loading: Boolean,
 });
 
-const emit = defineEmits(["update:modelValue", "confirm", "cancel"]);
+const emit = defineEmits(['update:modelValue', 'confirm', 'cancel']);
 
-const isOpen = ref(props.modelValue);
+const dialogOpen = ref(props.modelValue);
 
-// Sync v-model
-watch(
-  () => props.modelValue,
-  (newValue) => {
-    isOpen.value = newValue;
-  }
-);
+watch(() => props.modelValue, (val) => {
+  dialogOpen.value = val;
+});
 
-watch(isOpen, (newValue) => {
-  emit("update:modelValue", newValue);
+watch(dialogOpen, (val) => {
+  emit('update:modelValue', val);
 });
 
 const handleConfirm = () => {
-  emit("confirm");
+  emit('confirm');
 };
 
 const handleCancel = () => {
-  emit("cancel");
-  isOpen.value = false;
+  emit('cancel');
+  emit('update:modelValue', false);
 };
 </script>
+
+<style scoped>
+.dialog-header {
+  display: flex;
+  align-items: center;
+  padding: 20px 24px 16px;
+}
+
+.dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.message-text {
+  font-size: 14px;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.detail-text {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+</style>

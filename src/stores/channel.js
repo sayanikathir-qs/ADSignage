@@ -52,10 +52,6 @@ export const useChannelsStore = defineStore("channels", {
     activeChannels: (state) =>
       state.channels.filter((channel) => channel.status === "active"),
 
-    uniqueCustomers: (state) => {
-      const customers = new Set(state.channels.map((item) => item.customer));
-      return Array.from(customers).filter(Boolean);
-    },
 
     appStore: () => useAppStore(),
   },

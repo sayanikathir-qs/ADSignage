@@ -18,7 +18,7 @@ const pageTitle = computed(() => route.name)
     
     <div class="header-right">
       <div class="user-profile">
-        <img src="https://i.pravatar.cc/150?u=sayani" alt="User" class="avatar" />
+        <img src="/home/sayani/Pictures/user.png" alt="User" class="avatar" />
       </div>
     </div>
   </header>
