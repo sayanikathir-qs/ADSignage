@@ -3,7 +3,7 @@
   <v-dialog v-model="dialogOpen" max-width="600" persistent>
     <v-card>
       <v-card-title class="dialog-header">
-        <v-icon color="primary" class="mr-3" size="24">mdi-upload</v-icon>
+        <v-icon class="btn-primary" size="24">mdi-upload</v-icon>
         <span class="dialog-title">Upload Media</span>
       </v-card-title>
       
@@ -32,7 +32,7 @@
           Cancel
         </v-btn>
         <v-btn
-          color="primary"
+          class="btn-primary"
           variant="flat"
           @click="handleSubmit"
           :loading="loading"
@@ -124,5 +124,16 @@ const formatFileSize = (bytes) => {
 .dialog-title {
   font-size: 16px;
   font-weight: 600;
+}
+.btn-primary {
+  background-color: #fdc704;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
 }
 </style>

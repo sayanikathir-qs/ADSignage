@@ -19,9 +19,10 @@
     <!-- Breadcrumb Navigation -->
     <div class="breadcrumb-nav">
       <template v-for="(folder, index) in folderPath" :key="folder.id">
-        <span class="breadcrumb-separator">/</span>
+        
         <button 
-          class="breadcrumb-item" 
+          class="btn-primary"
+          variant="flat"
           @click="navigateToFolder(folder.id, index)"
         >
           {{ folder.name }}
@@ -878,6 +879,18 @@ onMounted(async () => {
   position: absolute;
   right: 10px;
   pointer-events: none;
+}
+
+.btn-primary {
+  background-color: #fdc704;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
 }
 
 /* Loading & Empty States */

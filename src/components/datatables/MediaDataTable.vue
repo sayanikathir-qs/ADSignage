@@ -142,7 +142,6 @@ const formatDate = (dateString) => {
       <div class="card-footer">
         <div class="card-meta">
           <span class="card-name">{{ item.name }}</span>
-          <span class="card-customer">{{ item.customer }}</span>
         </div>
         <span
           class="type-badge"
@@ -193,12 +192,11 @@ const formatDate = (dateString) => {
     <table class="media-table">
       <thead>
         <tr>
-          <th class="col-name">Name</th>
-          <th class="col-type">Type</th>
-          <th class="col-customer">Customer</th>
-          <th class="col-size">Size</th>
-          <th class="col-date">Date Added</th>
-          <th class="col-actions"></th>
+          <th class="col-name">NAME</th>
+          <th class="col-type">TYPE</th>
+          <th class="col-size">SIZE</th>
+          <th class="col-date">DATE</th>
+          <th class="col-actions">ACTIONS</th>
         </tr>
       </thead>
       <tbody>
@@ -220,12 +218,11 @@ const formatDate = (dateString) => {
           <td>
             <span class="file-type-badge badge-folder">folder</span>
           </td>
-          <td class="table-cell-secondary">-</td>
           <td class="table-cell-secondary">{{ folder.itemCount || 0 }} items</td>
           <td class="table-cell-secondary">{{ formatDate(folder.createdAt) }}</td>
           <td>
             <div class="table-actions">
-              <v-menu location="bottom end">
+              <v-menu >
                 <template v-slot:activator="{ props }">
                   <button class="btn-icon" v-bind="props" @click.stop>
                     <MoreVertical :size="16" />
@@ -274,7 +271,6 @@ const formatDate = (dateString) => {
           <td>
             <span class="file-type-badge" :class="`badge-${item.type}`">{{ item.type }}</span>
           </td>
-          <td class="table-cell-secondary">{{ item.customer }}</td>
           <td class="table-cell-secondary">{{ item.size }}</td>
           <td class="table-cell-secondary">{{ formatDate(item.date) }}</td>
           <td>
