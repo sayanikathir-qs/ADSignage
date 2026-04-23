@@ -28,10 +28,10 @@
         />
 
         <!-- Customer -->
-        <div class="form-row mb-3">
+        <!-- <div class="form-row mb-3">
           <label class="form-label">Customer</label>
           <input v-model="customer" type="text" class="form-text-input" placeholder="Enter customer name" />
-        </div>
+        </div> -->
 
         <!-- File list preview -->
         <div v-if="files.length > 0" class="file-list">

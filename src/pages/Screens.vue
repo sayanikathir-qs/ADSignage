@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { screenGroups, screensData } from '../data/mockData'
+import { ref, computed, onMounted } from 'vue'
+import { useScreensStore } from '@/stores/screen'
+import { useChannelsStore } from '@/stores/channel'
 import {
   Monitor,
   Search,
@@ -19,10 +20,21 @@ import {
   X,
 } from 'lucide-vue-next'
 
+const screensStore = useScreensStore()
+const channelsStore = useChannelsStore()
+
 const searchQuery = ref('')
 
-const localScreens = ref(screensData.map(s => ({ ...s })))
-const localGroups = ref(screenGroups.map(g => ({ ...g })))
+// Load data on mount
+onMounted(async () => {
+  await screensStore.fetchScreens()
+  await channelsStore.fetchChannels()
+})
+
+// Computed properties from store
+const localScreens = computed(() => screensStore.screens)
+const localGroups = computed(() => screensStore.groups)
+const localChannels = computed(() => channelsStore.channels)
 
 const filteredGroupedScreens = computed(() => {
   const q = searchQuery.value.toLowerCase()
@@ -36,13 +48,34 @@ const filteredGroupedScreens = computed(() => {
   }))
 })
 
-// ── New Screen Dialog ──────────────────────────────
+const ungroupedScreens = computed(() => {
+  const q = searchQuery.value.toLowerCase()
+  return localScreens.value.filter(s => {
+    const isUngrouped = !s.groupId
+    if (!q) return isUngrouped
+    return isUngrouped && (s.name.toLowerCase().includes(q) || (s.channel || '').toLowerCase().includes(q))
+  })
+})
+
+// ── New Screen Dialog ─────────────────────────────
 const showNewScreen = ref(false)
-const newScreen = ref({ name: '', type: 'Web', pairingCode: ['', '', '', '', '', ''], freeTrial: false, subscription: '' })
+const newScreen = ref({ 
+  name: '', 
+  type: 'Web', 
+  pairingCode: ['', '', '', '', '', ''], 
+  freeTrial: false, 
+  subscription: '' 
+})
 const pairingRefs = ref([])
 
 const openNewScreenDialog = () => {
-  newScreen.value = { name: '', type: 'Web', pairingCode: ['', '', '', '', '', ''], freeTrial: false, subscription: '' }
+  newScreen.value = { 
+    name: '', 
+    type: 'Web', 
+    pairingCode: ['', '', '', '', '', ''], 
+    freeTrial: false, 
+    subscription: '' 
+  }
   showNewScreen.value = true
 }
 
@@ -58,19 +91,16 @@ const onPairingKeydown = (i, e) => {
   }
 }
 
-const handleAddScreen = () => {
+const handleAddScreen = async () => {
   if (!newScreen.value.name.trim()) return
   const code = newScreen.value.pairingCode.join('')
-  const id = Date.now()
-  localScreens.value.push({
-    id,
+  
+  await screensStore.createScreen({
     name: newScreen.value.name.trim(),
     type: newScreen.value.type,
-    groupId: localGroups.value[0]?.id || null,
-    status: 'offline',
-    offlineAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
-    channel: null,
     pairingCode: code,
+    freeTrial: newScreen.value.freeTrial,
+    subscription: newScreen.value.subscription,
   })
   showNewScreen.value = false
 }
@@ -84,29 +114,110 @@ const openNewGroupDialog = () => {
   showNewGroup.value = true
 }
 
-const ungroupedScreens = computed(() =>
-  localScreens.value.filter(s => !s.groupId)
-)
-
-const handleCreateGroup = () => {
+const handleCreateGroup = async () => {
   if (!newGroup.value.name.trim()) return
-  const id = Date.now()
-  localGroups.value.push({ id, name: newGroup.value.name.trim() })
-  newGroup.value.selectedScreenIds.forEach(sid => {
-    const s = localScreens.value.find(s => s.id === sid)
-    if (s) s.groupId = id
+  await screensStore.createGroup({
+    name: newGroup.value.name.trim(),
+    screenIds: newGroup.value.selectedScreenIds,
   })
   showNewGroup.value = false
 }
 
+// ─ Assign Channel to Group Dialog ────────────────────
+const showAssignChannel = ref(false)
+const assignChannelGroup = ref(null)
+const selectedChannel = ref('')
+
+const openAssignChannelDialog = (group) => {
+  assignChannelGroup.value = group
+  const groupScreens = localScreens.value.filter(s => s.groupId === group.id)
+  selectedChannel.value = groupScreens[0]?.channel || ''
+  showAssignChannel.value = true
+}
+
+const handleAssignChannelToGroup = async () => {
+  if (!assignChannelGroup.value) return
+  await screensStore.assignChannelToGroup(
+    assignChannelGroup.value.id, 
+    selectedChannel.value || null
+  )
+  showAssignChannel.value = false
+}
+
+// ── Set Content Dialog (for individual screen) ─────────
+const showSetContent = ref(false)
+const contentScreen = ref(null)
+const selectedContentChannel = ref('')
+
+const openSetContentDialog = (screen) => {
+  contentScreen.value = screen
+  selectedContentChannel.value = screen.channel || ''
+  showSetContent.value = true
+}
+
+const handleSetContent = async () => {
+  if (!contentScreen.value) return
+  await screensStore.updateScreenChannel(
+    contentScreen.value.id,
+    selectedContentChannel.value || null
+  )
+  showSetContent.value = false
+}
+
 // ── Screen context menu actions ────────────────────
-const handleMenuAction = (action, screenId) => {
+const handleMenuAction = async (action, screenId) => {
   if (action === 'delete') {
-    localScreens.value = localScreens.value.filter(s => s.id !== screenId)
+    await screensStore.deleteScreen(screenId)
   }
   if (action === 'removeChannel') {
-    const s = localScreens.value.find(s => s.id === screenId)
-    if (s) s.channel = null
+    await screensStore.updateScreenChannel(screenId, null)
+  }
+  if (action === 'setContent') {
+    const screen = localScreens.value.find(s => s.id === screenId)
+    if (screen) openSetContentDialog(screen)
+  }
+}
+
+// ── Screen Preview (Fullscreen - follows Media.vue pattern) ─────────
+const showPreviewDialog = ref(false)
+const previewScreen = ref(null)
+const refreshing = ref(false)
+
+const openPreview = (screen) => {
+  previewScreen.value = screen
+  showPreviewDialog.value = true
+}
+
+const getChannelPreviewUrl = (channelName) => {
+  if (!channelName) return null
+  const channel = channelsStore.channels.find(c => c.name === channelName)
+  if (channel?.previewUrl) return channel.previewUrl
+  // Mock previews for demo
+  const mockPreviews = {
+    'star sports': 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&mute=1',
+    'DEMO 37': 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&mute=1',
+    'YT 2 video': 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&mute=1',
+  }
+  return mockPreviews[channelName] || null
+}
+
+const getGroupName = (groupId) => {
+  if (!groupId) return null
+  const group = localGroups.value.find(g => g.id === groupId)
+  return group?.name || null
+}
+
+const refreshScreenPreview = async () => {
+  if (!previewScreen.value) return
+  refreshing.value = true
+  try {
+    await screensStore.fetchScreens()
+    const updated = localScreens.value.find(s => s.id === previewScreen.value.id)
+    if (updated) previewScreen.value = { ...updated }
+  } catch (error) {
+    console.error('Error refreshing preview:', error)
+  } finally {
+    refreshing.value = false
   }
 }
 
@@ -125,7 +236,7 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 </script>
 
 <template>
-  <div class="screens-page" @click="closeContextMenu">
+  <div class="screens-page">
     <!-- Top Bar -->
     <div class="top-bar">
       <div class="top-bar-actions">
@@ -155,6 +266,64 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
       </div>
     </div>
 
+    <!-- Ungrouped Screens -->
+    <div v-if="ungroupedScreens.length > 0" class="ungrouped-section">
+      <!-- <h3 class="section-title">Ungrouped Screens</h3> -->
+      <div class="screens-list">
+        <div
+          v-for="screen in ungroupedScreens"
+          :key="screen.id"
+          class="screen-row"
+        >
+          <div class="screen-icon">
+            <Monitor :size="32" color="#fdc704" />
+          </div>
+          <div class="screen-info">
+            <div class="screen-name-row">
+              <span class="screen-name">{{ screen.name }}</span>
+              <span v-if="screen.type" class="type-badge">{{ screen.type }}</span>
+            </div>
+            <div class="screen-status">
+              <span class="status-offline">OFFLINE</span>
+              <span class="offline-time">Offline at: {{ screen.offlineAt }}</span>
+            </div>
+          </div>
+          <div class="screen-channel" v-if="screen.channel">
+            <span class="running-icon">🏃</span>
+            <span class="channel-name">{{ screen.channel }}</span>
+            <ExternalLink :size="14" class="ext-icon" />
+          </div>
+          <div class="screen-channel empty" v-else>
+            <span class="no-channel">No channel</span>
+          </div>
+          <button class="btn-preview" @click="openPreview(screen)">
+            <Play :size="14" />
+            Preview
+          </button>
+          <v-menu location="bottom end">
+            <template #activator="{ props }">
+              <button class="more-btn" v-bind="props" @click.stop>
+                <MoreVertical :size="18" />
+              </button>
+            </template>
+            <v-list density="compact" min-width="180">
+              <v-list-item
+                v-for="item in menuItems"
+                :key="item.action"
+                :base-color="item.danger ? 'error' : undefined"
+                @click="handleMenuAction(item.action, screen.id)"
+              >
+                <template #prepend>
+                  <component :is="item.icon" :size="14" class="mr-2" />
+                </template>
+                <v-list-item-title>{{ item.label }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </div>
+      </div>
+    </div>
+
     <!-- Groups + Screens -->
     <div class="groups-container">
       <div
@@ -172,6 +341,10 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
               </button>
             </template>
             <v-list density="compact" min-width="180">
+              <v-list-item @click="openAssignChannelDialog(group)">
+                <template #prepend><Tv2 :size="14" class="mr-2" /></template>
+                <v-list-item-title>Assign Channel to Group</v-list-item-title>
+              </v-list-item>
               <v-list-item @click="console.log('rename group', group.id)">
                 <template #prepend><Pencil :size="14" class="mr-2" /></template>
                 <v-list-item-title>Rename Group</v-list-item-title>
@@ -190,12 +363,9 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
           :key="screen.id"
           class="screen-row"
         >
-          <!-- Monitor Icon -->
           <div class="screen-icon">
             <Monitor :size="32" color="#fdc704" />
           </div>
-
-          <!-- Screen Info -->
           <div class="screen-info">
             <div class="screen-name-row">
               <span class="screen-name">{{ screen.name }}</span>
@@ -206,8 +376,6 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
               <span class="offline-time">Offline at: {{ screen.offlineAt }}</span>
             </div>
           </div>
-
-          <!-- Channel -->
           <div class="screen-channel" v-if="screen.channel">
             <span class="running-icon">🏃</span>
             <span class="channel-name">{{ screen.channel }}</span>
@@ -216,14 +384,10 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
           <div class="screen-channel empty" v-else>
             <span class="no-channel">No channel</span>
           </div>
-
-          <!-- Preview Button -->
-          <button class="btn-preview">
+          <button class="btn-preview" @click="openPreview(screen)">
             <Play :size="14" />
             Preview
           </button>
-
-          <!-- Context Menu -->
           <v-menu location="bottom end">
             <template #activator="{ props }">
               <button class="more-btn" v-bind="props" @click.stop>
@@ -246,9 +410,8 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
           </v-menu>
         </div>
 
-        <!-- Empty group state -->
         <div v-if="group.screens.length === 0" class="empty-group">
-          No screens in this group
+          No screens in this group. Create a group with screens or assign existing screens.
         </div>
       </div>
     </div>
@@ -263,7 +426,6 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
       </div>
 
       <div class="dialog-body">
-        <!-- Illustration placeholder -->
         <div class="screen-illus">
           <Monitor :size="64" color="#fdc704" />
         </div>
@@ -358,6 +520,243 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
       </div>
     </div>
   </div>
+
+  <!-- ── Assign Channel to Group Dialog ────────────── -->
+  <div v-if="showAssignChannel" class="dialog-overlay" @click.self="showAssignChannel = false">
+    <div class="dialog-box dialog-box--sm">
+      <div class="dialog-head">
+        <h3>Assign Channel to "{{ assignChannelGroup?.name }}"</h3>
+        <button class="dlg-close" @click="showAssignChannel = false"><X :size="20" /></button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="form-group">
+          <label>Available Channel*</label>
+          <select v-model="selectedChannel" class="form-select">
+            <option value="">-- Select Channel --</option>
+            <option v-for="ch in localChannels" :key="ch.id" :value="ch.name">{{ ch.name }}</option>
+          </select>
+        </div>
+        <p class="info-text" :class="{ 'text-error': localScreens.filter(s => s.groupId === assignChannelGroup?.id).length === 0 }">
+          This will apply "{{ selectedChannel || 'no channel' }}" to all {{ localScreens.filter(s => s.groupId === assignChannelGroup?.id).length }} screen(s) in this group.
+        </p>
+        <div v-if="localScreens.filter(s => s.groupId === assignChannelGroup?.id).length === 0" class="warning-box">
+          <strong>⚠️ Warning:</strong> This group has no screens. Please add screens to the group first.
+        </div>
+      </div>
+
+      <div class="dialog-foot">
+        <button 
+          class="btn-dlg-primary" 
+          @click="handleAssignChannelToGroup"
+          :disabled="localScreens.filter(s => s.groupId === assignChannelGroup?.id).length === 0"
+        >
+          Apply to Group
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Set Content Dialog (Individual Screen) ────── -->
+  <div v-if="showSetContent" class="dialog-overlay" @click.self="showSetContent = false">
+    <div class="dialog-box dialog-box--sm">
+      <div class="dialog-head">
+        <h3>Set Content for "{{ contentScreen?.name }}"</h3>
+        <button class="dlg-close" @click="showSetContent = false"><X :size="20" /></button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="form-group">
+          <label>Select Channel*</label>
+          <select v-model="selectedContentChannel" class="form-select">
+            <option value="">-- Select Channel --</option>
+            <option v-for="ch in localChannels" :key="ch.id" :value="ch.name">{{ ch.name }}</option>
+          </select>
+        </div>
+        <p class="info-text">
+          This will assign "{{ selectedContentChannel || 'no channel' }}" to this screen only.
+        </p>
+      </div>
+
+      <div class="dialog-foot">
+        <button class="btn-dlg-primary" @click="handleSetContent">
+          Apply to Screen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Screen Preview Dialog (Fullscreen - follows Media.vue) ────────────── -->
+  <v-dialog v-model="showPreviewDialog" fullscreen transition="dialog-bottom-transition">
+    <v-card class="bg-black" v-if="previewScreen">
+      <!-- Toolbar -->
+      <v-toolbar color="rgba(0,0,0,0.8)" class="text-white">
+        <v-btn icon variant="text" @click="showPreviewDialog = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+        <v-toolbar-title class="font-weight-bold">
+          Screen Preview - {{ previewScreen.name }}
+        </v-toolbar-title>
+        <v-spacer></v-spacer>
+        <!-- Status Badge -->
+        <v-chip 
+          :color="previewScreen.status === 'online' ? 'success' : 'error'" 
+          class="mr-3 text-uppercase font-weight-bold"
+          size="small"
+        >
+          {{ previewScreen.status }}
+        </v-chip>
+        <!-- Screen Type -->
+        <v-chip color="warning" class="mr-3 text-uppercase font-weight-bold" size="small">
+          {{ previewScreen.type }}
+        </v-chip>
+      </v-toolbar>
+      
+      <v-card-text class="pa-0 bg-black">
+        <v-sheet 
+          height="calc(100vh - 64px)" 
+          width="100%" 
+          color="transparent" 
+          class="d-flex flex-column align-center justify-center"
+        >
+          <!-- Screen has channel assigned -->
+          <template v-if="previewScreen?.channel">
+            <!-- Online Screen - Show actual preview -->
+            <template v-if="previewScreen.status === 'online'">
+              <div class="preview-container">
+                <!-- Channel Preview Frame -->
+                <iframe
+                  v-if="getChannelPreviewUrl(previewScreen.channel)"
+                  :src="getChannelPreviewUrl(previewScreen.channel)"
+                  class="channel-preview-frame"
+                  frameborder="0"
+                  allowfullscreen
+                  allow="autoplay; fullscreen; picture-in-picture"
+                ></iframe>
+                
+                <!-- Fallback: Channel placeholder -->
+                <div v-else class="preview-placeholder">
+                  <v-icon size="120" color="warning">mdi-television</v-icon>
+                  <h2 class="text-white mt-6">{{ previewScreen.channel }}</h2>
+                  <p class="text-medium-emphasis mt-2">Channel content preview</p>
+                </div>
+              </div>
+              
+              <!-- Channel Info Bar -->
+              <div class="d-flex align-center mt-4">
+                <v-chip color="warning" class="mr-3 text-uppercase font-weight-bold">
+                  {{ previewScreen.channel }}
+                </v-chip>
+                <span class="text-medium-emphasis">
+                  <v-icon size="16" class="mr-1">mdi-clock</v-icon>
+                  Playing since: {{ previewScreen.lastConnected || 'N/A' }}
+                </span>
+              </div>
+            </template>
+            
+            <!-- Offline Screen - Show placeholder with status -->
+            <template v-else>
+              <div class="preview-container offline">
+                <v-icon size="120" color="grey">mdi-television-off</v-icon>
+                <h2 class="text-white mt-6">{{ previewScreen.channel }}</h2>
+                <p class="text-medium-emphasis mt-2">Screen is offline</p>
+                <div class="offline-overlay">
+                  <v-chip color="error" class="text-uppercase font-weight-bold">
+                    <v-icon start size="small">mdi-wifi-off</v-icon>
+                    Offline
+                  </v-chip>
+                </div>
+              </div>
+              
+              <!-- Offline Info -->
+              <div class="d-flex align-center mt-4">
+                <v-chip color="warning" class="mr-3 text-uppercase font-weight-bold">
+                  {{ previewScreen.channel }}
+                </v-chip>
+                <span class="text-error">
+                  <v-icon size="16" class="mr-1">mdi-alert-circle</v-icon>
+                  Last offline: {{ previewScreen.offlineAt }}
+                </span>
+              </div>
+              <p class="text-grey mt-2 text-center">
+                Content will play automatically when screen comes back online.
+              </p>
+            </template>
+          </template>
+          
+          <!-- No channel assigned -->
+          <template v-else>
+            <v-icon size="120" color="grey">mdi-television-off</v-icon>
+            <h2 class="text-white mt-6">No Channel Assigned</h2>
+            <p class="text-medium-emphasis mt-2">This screen is not playing any content.</p>
+            <v-btn 
+              color="warning" 
+              class="mt-4"
+              prepend-icon="mdi-link"
+              @click="openSetContentDialog(previewScreen); showPreviewDialog = false;"
+            >
+              Assign Channel
+            </v-btn>
+          </template>
+          
+          <!-- Screen Details Footer -->
+          <div class="screen-details-footer mt-auto mb-4">
+            <v-card class="bg-grey-darken-3" variant="outlined" max-width="600">
+              <v-card-text class="py-3">
+                <div class="d-flex justify-space-between align-center flex-wrap">
+                  <div>
+                    <p class="text-caption text-grey mb-1">Screen Name</p>
+                    <p class="text-subtitle-2 font-weight-bold">{{ previewScreen.name }}</p>
+                  </div>
+                  <div>
+                    <p class="text-caption text-grey mb-1">Pairing Code</p>
+                    <p class="text-subtitle-2 font-weight-mono">{{ previewScreen.pairingCode }}</p>
+                  </div>
+                  <div>
+                    <p class="text-caption text-grey mb-1">Group</p>
+                    <p class="text-subtitle-2">
+                      {{ getGroupName(previewScreen.groupId) || 'Ungrouped' }}
+                    </p>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+        </v-sheet>
+      </v-card-text>
+      
+      <!-- Action Buttons -->
+      <v-card-actions class="bg-black pa-4" style="position: absolute; bottom: 0; width: 100%;">
+        <v-spacer></v-spacer>
+        <v-btn 
+          variant="outlined" 
+          color="grey"
+          @click="showPreviewDialog = false"
+        >
+          Close
+        </v-btn>
+        <v-btn 
+          v-if="previewScreen?.channel"
+          color="warning"
+          class="ml-3"
+          prepend-icon="mdi-refresh"
+          @click="refreshScreenPreview"
+          :loading="refreshing"
+        >
+          Refresh
+        </v-btn>
+        <v-btn 
+          v-if="!previewScreen?.channel"
+          color="warning"
+          class="ml-3"
+          prepend-icon="mdi-link"
+          @click="openSetContentDialog(previewScreen); showPreviewDialog = false;"
+        >
+          Set Content
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
@@ -449,6 +848,26 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 
 .search-btn:hover {
   background: #f9fafb;
+}
+
+/* Ungrouped Section */
+.ungrouped-section {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1rem;
+  padding-left: 0.5rem;
+}
+
+.screens-list {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 /* Groups Container */
@@ -663,7 +1082,11 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 }
 
 .dialog-box--sm {
-  max-width: 380px;
+  max-width: 420px;
+}
+
+.dialog-box--md {
+  max-width: 500px;
 }
 
 .dialog-head {
@@ -726,6 +1149,17 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 .checkbox-group label { margin: 0; font-size: 0.85rem; font-weight: 400; }
 
 .info-text { font-size: 0.8rem; color: #6b7280; margin: -0.5rem 0 0; }
+.text-error { color: #ef4444; }
+
+.warning-box {
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #92400e;
+  margin-top: 0.5rem;
+}
 
 /* Screen Select List */
 .screens-select-list {
@@ -758,4 +1192,86 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
   transition: background 0.2s;
 }
 .btn-dlg-primary:hover { background: #e6b400; }
+.btn-dlg-primary:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.text-center { text-align: center; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.justify-center { justify-content: center; }
+.text-h5 { font-size: 1.125rem; }
+.font-weight-bold { font-weight: 700; }
+.text-medium-emphasis { color: #6b7280; }
+.text-grey-darken-1 { color: #4b5563; }
+
+/* ── Preview Styles (Fullscreen Dialog) ───────────── */
+.preview-container {
+  width: 100%;
+  max-width: 1280px;
+  aspect-ratio: 16/9;
+  background: #1f2937;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.preview-container.offline {
+  opacity: 0.8;
+}
+
+.channel-preview-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.preview-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+}
+
+.offline-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screen-details-footer {
+  padding: 0 2rem;
+}
+
+.font-weight-mono {
+  font-family: monospace;
+  letter-spacing: 2px;
+}
+
+.text-grey {
+  color: #9ca3af !important;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  .preview-container {
+    max-width: 100%;
+    margin: 0 1rem;
+  }
+  .screen-details-footer {
+    padding: 0 1rem;
+  }
+}
 </style>
