@@ -12,6 +12,17 @@ export const screens = [
   { id: 4, name: 'Meeting Room 302', status: 'Online', location: 'Floor 3', lastSeen: 'Just now' },
 ];
 
+export const screenGroups = [
+  { id: 1, name: 'WebGroup' },
+  { id: 2, name: 'LG WALL' },
+];
+
+export const screensData = [
+  { id: 1, name: 'Samsung', type: 'Web', groupId: 1, status: 'offline', offlineAt: 'Oct 8, 2024, 6:58pm', channel: 'Sayani' },
+  { id: 2, name: 'OutDoor', type: null, groupId: 2, status: 'offline', offlineAt: 'Jun 3, 2024, 6:30pm', channel: 'CostAcoffee' },
+  { id: 3, name: 'Office NEC 75 4K', type: null, groupId: 2, status: 'offline', offlineAt: 'Sep 11, 2023, 8:51am', channel: 'Demo3' },
+];
+
 export const channels = [
   { id: 1, name: 'Sayani', status: 'Draft Saved. Publish required.', lastEdited: 'Wed, Apr 15, 2026 7:15 AM' },
   { id: 2, name: 'DEMO 37', status: 'Published.', lastEdited: 'Tue, Mar 17, 2026 6:35 PM' },
@@ -45,4 +56,20 @@ export const mediaStats = [
   { label: 'Total Files', value: '18,429', sub: 'Across all customers', color: '#6366f1' },
   { label: 'Videos', value: '4,218', sub: '1.8 TB total', color: '#8b5cf6' },
   { label: 'Images', value: '12,847', sub: '580 GB total', color: '#fdc704' },
+];
+
+export const topCustomers = [
+  { name: 'Nexus Retail', screens: 142, plan: 'Enterprise', storage: '480 GB', status: 'active' },
+  { name: 'CityMall Group', screens: 98, plan: 'Pro', storage: '320 GB', status: 'active' },
+  { name: 'Food Co', screens: 67, plan: 'Pro', storage: '210 GB', status: 'active' },
+  { name: 'TechStart Inc', screens: 45, plan: 'Standard', storage: '95 GB', status: 'active' },
+  { name: 'RetailHub', screens: 38, plan: 'Standard', storage: '78 GB', status: 'inactive' },
+];
+
+export const liveActivity = [
+  { text: 'Nexus Retail paired 3 new screens in Chicago store', time: '2 min ago' },
+  { text: 'CityMall Group updated Morning Welcome playlist', time: '8 min ago' },
+  { text: 'Food Co published Digital Menu channel', time: '15 min ago' },
+  { text: 'TechStart Inc uploaded 4 new media files', time: '22 min ago' },
+  { text: 'RetailHub screen "Outdoor South" went offline', time: '35 min ago' },
 ];

@@ -1,43 +1,31 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
-import { 
-  ArrowLeft, 
-  Play, 
-  Save, 
-  Upload, 
-  GripVertical,
+import {
+  ArrowLeft,
+  Play,
+  Save,
+  Upload,
   Trash2,
-  Clock,
   Calendar,
   Settings,
   Layout,
   List,
-  Film,
-  Tv,
-  Plus,
   FolderOpen,
-  X
+  X,
+  ExternalLink,
 } from 'lucide-vue-next'
+import { usePlaylistStore } from '@/stores/playlist'
+import { useChannelsStore } from '@/stores/channel'
+import { toast } from 'vue3-toastify'
 
 const route = useRoute()
 const router = useRouter()
 
 const channelId = ref(route.params.channelId)
-const channelName = ref('Sayani')
+const channelName = ref('')
 const activeTab = ref('playlist')
-
-// Available playlists (left panel)
-const availablePlaylists = ref([
-  { id: 1, name: 'OutDoor ADD', duration: '00:00:00', type: 'video' },
-  { id: 2, name: 'Sayani', duration: '00:00:06', type: 'video' },
-  { id: 3, name: 'DEMO 37', duration: '00:00:34', type: 'video' },
-  { id: 4, name: 'YT 2 videos', duration: '00:00:35', type: 'youtube' },
-  { id: 5, name: 'ADS - Channel canvas', duration: '00:00:06', type: 'video' },
-  { id: 6, name: '10secs tim - YT Channel', duration: '00:00:11', type: 'youtube' },
-  { id: 7, name: 'Raindrop - Playlist', duration: '00:00:15', type: 'playlist' },
-])
 
 // Channel items (right panel - drop zone)
 const channelItems = ref([])
@@ -47,8 +35,33 @@ const selectedLayout = ref(layouts.value[0])
 
 // Schedule modal state
 const showScheduleModal = ref(false)
+const showPreviewModal = ref(false)
 const selectedItemIndex = ref(null)
 const selectedItem = ref(null)
+
+const playlistStore = usePlaylistStore()
+const channelStore = useChannelsStore()
+
+// Load real playlists and channel data on mount
+onMounted(async () => {
+  await playlistStore.fetchPlaylists()
+  await channelStore.fetchChannels()
+  const channel = channelStore.getById(Number(channelId.value))
+  if (channel) {
+    channelName.value = channel.name
+    channelItems.value = channel.items || []
+  }
+})
+
+// Map store data to the shape ChannelBuilder needs
+const availablePlaylists = computed(() =>
+  playlistStore.getAll.map(p => ({
+    id: p.id,
+    name: p.name,
+    duration: p.duration || '00:00:00',
+    type: p.type || 'video',
+  }))
+)
 
 const scheduleData = ref({
   dateRange: {
@@ -66,20 +79,50 @@ const scheduleData = ref({
   }
 })
 
+const parseDuration = (durStr) => {
+  if (!durStr) return 0
+  const parts = durStr.split(':').reverse()
+  let seconds = 0
+  for (let i = 0; i < parts.length; i++) {
+    seconds += parseInt(parts[i] || 0, 10) * Math.pow(60, i)
+  }
+  return seconds
+}
+
 const totalDuration = computed(() => {
-  return '00:01:47'
+  const secs = channelItems.value.reduce((sum, item) => sum + parseDuration(item.duration), 0)
+  const h = Math.floor(secs / 3600).toString().padStart(2, '0')
+  const m = Math.floor((secs % 3600) / 60).toString().padStart(2, '0')
+  const s = (secs % 60).toString().padStart(2, '0')
+  return `${h}:${m}:${s}`
 })
 
 const handleBack = () => router.push({ name: 'Channels' })
-const handleSave = () => console.log('Saving channel...')
-const handlePreview = () => console.log('Previewing channel...')
-const handlePublish = () => console.log('Publishing channel...')
+
+const handleSave = async () => {
+  await channelStore.updateChannel(Number(channelId.value), {
+    name: channelName.value,
+    items: channelItems.value,
+  })
+  toast.success('Channel saved')
+}
+
+const handlePreview = () => {
+  showPreviewModal.value = true
+}
+
+const handlePublish = async () => {
+  await channelStore.updateChannel(Number(channelId.value), {
+    name: channelName.value,
+    items: channelItems.value,
+    status: 'Published',
+  })
+  toast.success('Channel published successfully')
+}
 
 const handleDeleteItem = (index) => {
   channelItems.value.splice(index, 1)
 }
-
-const handleAddPlaylist = () => console.log('Add playlist')
 
 const openScheduleModal = (item, index) => {
   selectedItem.value = item
@@ -94,27 +137,16 @@ const closeScheduleModal = () => {
 }
 
 const handleSchedule = () => {
-  console.log('Scheduling:', selectedItem.value, scheduleData.value)
-  // Add scheduled flag to item
   if (selectedItemIndex.value !== null) {
-    channelItems.value[selectedItemIndex.value].scheduled = true
+    channelItems.value[selectedItemIndex.value] = {
+      ...channelItems.value[selectedItemIndex.value],
+      scheduled: true,
+      scheduleData: JSON.parse(JSON.stringify(scheduleData.value)),
+    }
   }
   closeScheduleModal()
 }
 
-const getItemIcon = (type) => (type === 'youtube' ? Tv : Film)
-
-const getItemColor = (type) => {
-  switch(type) {
-    case 'youtube': return '#3b82f6'
-    case 'playlist': return '#fdc704'
-    default: return '#6366f1'
-  }
-}
-
-const formatTime = (hours, minutes) => {
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-}
 </script>
 
 <template>
@@ -203,30 +235,12 @@ const formatTime = (hours, minutes) => {
             >
               <template #item="{ element }">
                 <div class="playlist-item">
-                  <div class="item-drag">
-                    <GripVertical :size="16" color="#9ca3af" />
-                  </div>
-                  
-                  <div class="item-icon" :style="{ color: getItemColor(element.type) }">
-                    <component :is="getItemIcon(element.type)" :size="24" />
-                  </div>
-                  
                   <div class="item-info">
-                    <div class="item-name">{{ element.name }}</div>
-                    <div class="item-duration">
-                      <Clock :size="12" />
-                      {{ element.duration }}
+                    <div class="item-name">
+                      {{ element.name }}
+                      <ExternalLink :size="14" style="margin-left:4px;opacity:0.5;vertical-align:middle" />
                     </div>
-                  </div>
-                  
-                  <div class="item-actions">
-                    <button 
-                      v-if="element.scheduled"
-                      class="btn-icon btn-schedule"
-                      title="Scheduled"
-                    >
-                      <Calendar :size="16" />
-                    </button>
+                    <div class="item-duration">{{ element.duration }}</div>
                   </div>
                 </div>
               </template>
@@ -242,7 +256,6 @@ const formatTime = (hours, minutes) => {
               {{ selectedLayout.name }}
             </h2>
             <span class="total-badge">
-              <Clock :size="14" />
               Total: {{ totalDuration }}
             </span>
           </div>
@@ -255,37 +268,33 @@ const formatTime = (hours, minutes) => {
             :class="{ 'is-empty': channelItems.length === 0 }"
           >
             <template #item="{ element, index }">
-              <div class="channel-item">
-                <div class="item-drag">
-                  <GripVertical :size="16" color="#9ca3af" />
-                </div>
-                
-                <div class="item-icon" :style="{ color: getItemColor(element.type) }">
-                  <component :is="getItemIcon(element.type)" :size="24" />
-                </div>
-                
+              <div :class="['channel-item', element.scheduled ? 'is-scheduled' : 'is-inactive']">
                 <div class="item-info">
-                  <div class="item-name">{{ element.name }}</div>
-                  <div class="item-duration">
-                    <Clock :size="12" />
-                    {{ element.duration }}
+                  <div class="item-name">
+                    {{ element.name }}
+                    <ExternalLink :size="14" style="margin-left:4px;opacity:0.5;vertical-align:middle" />
                   </div>
+                  <div class="item-duration">{{ element.duration }}</div>
                 </div>
-                
+
+                <span :class="['status-chip', element.scheduled ? 'chip-scheduled' : 'chip-inactive']">
+                  {{ element.scheduled ? 'Scheduled' : 'Inactive' }}
+                </span>
+
                 <div class="item-actions">
-                  <button 
-                    class="btn-icon btn-schedule-action"
+                  <button
+                    class="btn-action btn-schedule-action"
                     @click.stop="openScheduleModal(element, index)"
-                    title="Schedule"
                   >
-                    <Calendar :size="16" />
+                    <Calendar :size="14" />
+                    Schedule
                   </button>
-                  <button 
-                    class="btn-icon btn-delete"
+                  <button
+                    class="btn-action btn-delete"
                     @click.stop="handleDeleteItem(index)"
-                    title="Delete"
                   >
-                    <Trash2 :size="16" />
+                    <Trash2 :size="14" />
+                    Delete
                   </button>
                 </div>
               </div>
@@ -327,6 +336,39 @@ const formatTime = (hours, minutes) => {
             <label>Channel Name</label>
             <input type="text" v-model="channelName" class="form-input" />
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div v-if="showPreviewModal" class="modal-overlay" @click.self="showPreviewModal = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Channel Preview — {{ channelName }}</h3>
+          <button class="btn-close" @click="showPreviewModal = false">
+            <X :size="20" />
+          </button>
+        </div>
+        <div class="modal-body">
+          <div v-if="channelItems.length === 0" class="preview-empty">
+            <Layout :size="48" color="#fdc704" />
+            <p>No playlists added to this channel yet.</p>
+          </div>
+          <div v-else class="preview-list">
+            <div v-for="(item, i) in channelItems" :key="i" class="preview-item">
+              <span class="preview-index">{{ i + 1 }}</span>
+              <div class="preview-item-info">
+                <div class="item-name">{{ item.name }}</div>
+                <div class="item-duration">{{ item.duration }}</div>
+              </div>
+              <span :class="['status-chip', item.scheduled ? 'chip-scheduled' : 'chip-inactive']">
+                {{ item.scheduled ? 'Scheduled' : 'Inactive' }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <span class="total-badge">Total: {{ totalDuration }}</span>
         </div>
       </div>
     </div>
@@ -498,8 +540,8 @@ const formatTime = (hours, minutes) => {
 }
 
 .btn-primary:hover {
-  background-color: #0d9488;
-  border-color: #0d9488;
+  background-color: #e6b400;
+  border-color: #e6b400;
 }
 
 /* Tabs */
@@ -576,6 +618,7 @@ const formatTime = (hours, minutes) => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  align-self: start;
 }
 
 .panel-header {
@@ -620,7 +663,7 @@ const formatTime = (hours, minutes) => {
   gap: 0.875rem;
   padding: 1rem;
   background-color: #f8fafc;
-  border: 1px dashed #e2e8f0;
+  border: 1px dashed #fdc704;
   border-radius: 8px;
   cursor: grab;
   transition: all 0.2s;
@@ -665,46 +708,60 @@ const formatTime = (hours, minutes) => {
 .item-actions {
   display: flex;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
-.btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 4px;
+.btn-action {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s;
-}
-
-.btn-schedule {
-  color: #fdc704;
-}
-
-.btn-schedule:hover {
-  background-color: #f0fdfa;
+  white-space: nowrap;
 }
 
 .btn-schedule-action {
+  background: #eff6ff;
   color: #3b82f6;
+  border: 1px solid #bfdbfe;
 }
 
 .btn-schedule-action:hover {
-  background-color: #eff6ff;
-}
-
-.btn-scheduled {
-  color: #fdc704;
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 
 .btn-delete {
+  background: #fef2f2;
   color: #ef4444;
+  border: 1px solid #fecaca;
 }
 
 .btn-delete:hover {
-  background-color: #fef2f2;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.status-chip {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.chip-scheduled {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.chip-inactive {
+  background: #f1f5f9;
+  color: #94a3b8;
 }
 
 /* Right Panel */
@@ -794,6 +851,15 @@ const formatTime = (hours, minutes) => {
 
 .channel-item:active {
   cursor: grabbing;
+}
+
+.channel-item.is-scheduled {
+  border-left: 3px solid #22c55e;
+}
+
+.channel-item.is-inactive {
+  border-left: 3px solid #e2e8f0;
+  opacity: 0.85;
 }
 
 /* Modal Overlay */
@@ -996,6 +1062,51 @@ const formatTime = (hours, minutes) => {
   background: #f59e0b;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+/* Preview Modal */
+.preview-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: #94a3b8;
+}
+
+.preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.preview-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.preview-index {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fdc704;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.preview-item-info {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Layout View */

@@ -261,7 +261,7 @@
               </v-menu>
             </div>
           </div>
-          <p class="media-customer">{{ item.customer }}</p>
+          <p class="media-customer">{{ item.customer }} · {{ item.size }}</p>
         </div>
       </div>
     </div>
@@ -338,8 +338,34 @@
         
         <v-card-text class="pa-0 bg-black">
           <v-sheet height="calc(100vh - 64px)" width="100%" color="transparent" class="d-flex flex-column align-center justify-center">
-            <v-icon size="120" :color="getIconColor(previewDialog.item.type)">{{ getPreviewIcon(previewDialog.item.type) }}</v-icon>
-            <h2 class="text-white mt-6">{{ previewDialog.item.name }}</h2>
+            <template v-if="previewDialog.item.url">
+              <video
+                v-if="previewDialog.item.type === 'video'"
+                controls
+                autoplay
+                :src="previewDialog.item.url"
+                style="max-height:80vh;max-width:100%"
+              />
+              <img
+                v-else-if="previewDialog.item.type === 'image'"
+                :src="previewDialog.item.url"
+                :alt="previewDialog.item.name"
+                style="max-height:80vh;max-width:100%;object-fit:contain"
+              />
+              <iframe
+                v-else-if="previewDialog.item.type === 'html'"
+                :src="previewDialog.item.url"
+                style="width:100%;height:80vh;border:none"
+              />
+              <template v-else>
+                <v-icon size="120" :color="getIconColor(previewDialog.item.type)">{{ getPreviewIcon(previewDialog.item.type) }}</v-icon>
+                <h2 class="text-white mt-6">{{ previewDialog.item.name }}</h2>
+              </template>
+            </template>
+            <template v-else>
+              <v-icon size="120" :color="getIconColor(previewDialog.item.type)">{{ getPreviewIcon(previewDialog.item.type) }}</v-icon>
+              <h2 class="text-white mt-6">{{ previewDialog.item.name }}</h2>
+            </template>
             <div class="d-flex align-center mt-4">
               <v-chip :color="getIconColor(previewDialog.item.type)" class="mr-3 text-uppercase font-weight-bold">{{ previewDialog.item.type }}</v-chip>
               <span class="text-medium-emphasis text-h6">Duration: {{ previewDialog.item.duration || '00:10' }}</span>

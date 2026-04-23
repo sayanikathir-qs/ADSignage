@@ -4,7 +4,7 @@
       <!-- Header -->
       <v-card-title class="dialog-header">
         <div class="header-content">
-          <v-icon size="24" color="primary" class="mr-3">mdi-folder-plus</v-icon>
+          <v-icon size="24" color="#fdc704" class="mr-3">mdi-folder-plus</v-icon>
           <div>
             <h3 class="dialog-title-text">Create New Folder</h3>
             <p class="dialog-subtitle">Organize your media files</p>
@@ -44,19 +44,6 @@
           <v-icon size="14" color="grey" class="mr-1">mdi-folder</v-icon>
           <span class="parent-text">Creating in: <strong>{{ parentFolderName }}</strong></span>
         </div>
-
-        <!-- Tips -->
-        <v-alert
-          type="info"
-          variant="tonal"
-          density="compact"
-          class="mt-3"
-          icon="mdi-lightbulb"
-        >
-          <span class="text-caption">
-            <strong>Tip:</strong> Folder names can include spaces and special characters.
-          </span>
-        </v-alert>
       </v-card-text>
       
       <!-- Footer -->
@@ -76,7 +63,7 @@
           @click="handleSubmit"
           :loading="loading"
           :disabled="!isValid"
-          class="create-btn"
+          class="btn-primary"
         >
           Create Folder
         </v-btn>
@@ -238,14 +225,14 @@ const handleCancel = () => {
 .dialog-title-text {
   font-size: 16px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: #fdc704;
   margin: 0;
   line-height: 1.4;
 }
 
 .dialog-subtitle {
   font-size: 12px;
-  color: #6b7280;
+  color: #fdc704;
   margin: 2px 0 0 0;
 }
 
@@ -291,6 +278,12 @@ const handleCancel = () => {
   min-width: 120px;
   font-weight: 500;
 }
+.btn-primary {
+  background-color: #fdc704;
+  border-color: #fdc704;
+  color: white;
+}
+
 
 .v-dialog {
   animation: dialogFadeIn 0.2s ease-out;

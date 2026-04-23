@@ -226,6 +226,7 @@ async createFolder(payload) {
           duration: mediaData.duration || null,
           resolution: mediaData.resolution || null,
           gradient: mediaData.gradient || "linear-gradient(135deg,#3730a3,#1e3a5f)",
+          url: mediaData.url || null,
         };
 
         this.mediaItems.unshift(newMedia);
@@ -280,7 +281,11 @@ async createFolder(payload) {
     },
 
     saveMediaToStorage() {
-      localStorage.setItem('adsignage_media', JSON.stringify(this.mediaItems));
+      try {
+        localStorage.setItem('adsignage_media', JSON.stringify(this.mediaItems));
+      } catch {
+        // quota exceeded (e.g. large data URLs) — items still live in memory
+      }
     },
 
     saveFoldersToStorage() {

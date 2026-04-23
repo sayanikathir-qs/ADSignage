@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { channels as mockChannels } from "../data/mockData.js";
+
 import { useAppStore } from "@/stores/app";
 
 export const useChannelsStore = defineStore("channels", {

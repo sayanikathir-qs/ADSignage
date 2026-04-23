@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import draggable from 'vuedraggable'
-import { media as mockMedia } from '@/data/mockData'
+import { useMediaStore } from '@/stores/media'
+import { usePlaylistStore } from '@/stores/playlist'
 import { toast } from 'vue3-toastify'
 
 const props = defineProps({
@@ -13,14 +14,71 @@ const props = defineProps({
 
 const emit = defineEmits(['back'])
 
-// Available items (left pane)
-const availableMedia = ref([...mockMedia])
+const mediaStore = useMediaStore()
+const playlistStore = usePlaylistStore()
+
+// Folders and navigation state
+const currentFolderId = ref(null)
+const folderPath = ref([])
+
+const currentFolders = computed(() => {
+  return mediaStore.folders.filter(f => f.parentId === currentFolderId.value)
+})
+
+const currentMedia = computed(() => {
+  // We need to handle null or undefined folderId for root level media
+  return mediaStore.mediaItems.filter(m => {
+    if (currentFolderId.value) {
+      return m.folderId === currentFolderId.value
+    } else {
+      return !m.folderId
+    }
+  })
+})
+
+const navigateToFolder = (folder) => {
+  currentFolderId.value = folder.id
+  folderPath.value.push(folder)
+}
+
+const navigateUp = () => {
+  folderPath.value.pop()
+  if (folderPath.value.length > 0) {
+    currentFolderId.value = folderPath.value[folderPath.value.length - 1].id
+  } else {
+    currentFolderId.value = null
+  }
+}
+
+const navigateToRoot = () => {
+  currentFolderId.value = null
+  folderPath.value = []
+}
 
 // Selected items (right pane drop zone)
 const playlistItems = ref([])
 
 const tabs = ['Media', 'Library', 'Canvas', 'Apps', 'Settings']
 const activeTab = ref('Media')
+
+onMounted(async () => {
+  await mediaStore.fetchMedia()
+  await mediaStore.fetchFolders()
+  await playlistStore.fetchPlaylists()
+  // Restore previously saved items for this playlist
+  const saved = playlistStore.getById(props.playlist.id)
+  if (saved?.items && Array.isArray(saved.items) && saved.items.length > 0) {
+    playlistItems.value = saved.items
+  }
+})
+
+// ✅ Watch for store changes (in case media is deleted/added elsewhere)
+watch(() => mediaStore.mediaItems, (newVal) => {
+  // Optional: Remove deleted items from playlist if needed
+  playlistItems.value = playlistItems.value.filter(item => 
+    newVal.find(media => media.id === item.id)
+  )
+}, { deep: true })
 
 const getIcon = (type) => {
   switch (type) {
@@ -44,7 +102,7 @@ const getIconColor = (type) => {
 
 // Duration utilities
 const parseDuration = (durStr) => {
-  if (!durStr) return 10; // Default 10 seconds for items like images
+  if (!durStr) return 10;
   const parts = durStr.split(':').reverse();
   let seconds = 0;
   for (let i = 0; i < parts.length; i++) {
@@ -74,14 +132,17 @@ const handlePreview = () => {
   previewDialog.value = true
 }
 
-const publishPlaylist = () => {
-  console.log('Publishing playlist:', props.playlist)
-  console.log('Playlist items:', playlistItems.value)
-  if(playlistItems.value.length > 0){
-    toast.success('Playlist published successfully')
+const publishPlaylist = async () => {
+  if (playlistItems.value.length === 0) {
+    toast.warning('Add media items before publishing')
     return
   }
-  
+  await playlistStore.updatePlaylist(props.playlist.id, {
+    items: playlistItems.value,
+    duration: totalDurationFormatted.value,
+    lastEdited: new Date().toLocaleString(),
+  })
+  toast.success('Playlist published successfully')
 }
 </script>
 
@@ -111,8 +172,32 @@ const publishPlaylist = () => {
         </v-tabs>
 
         <div class="tab-content" v-if="activeTab === 'Media'">
+          <!-- Breadcrumb / Back Navigation -->
+          <div v-if="currentFolderId" class="d-flex align-center mb-4 breadcrumb-nav">
+            <v-btn icon="mdi-arrow-left" variant="text" size="small" @click="navigateUp" color="#fdc704"></v-btn>
+            <v-icon class="mx-2" size="small" color="grey">mdi-chevron-right</v-icon>
+            <span class="text-subtitle-2 font-weight-medium">{{ folderPath[folderPath.length - 1]?.name }}</span>
+          </div>
+
+          <!-- Folders -->
+          <div class="folder-list mb-4" v-if="currentFolders.length > 0">
+            <div 
+              v-for="folder in currentFolders" 
+              :key="folder.id" 
+              class="folder-item"
+              @click="navigateToFolder(folder)"
+            >
+              <div class="d-flex align-center">
+                <v-icon color="#fdc704" class="mr-3">mdi-folder</v-icon>
+                <span class="item-name">{{ folder.name }}</span>
+              </div>
+              <v-icon size="small" color="grey">mdi-chevron-right</v-icon>
+            </div>
+          </div>
+
+          <!-- Media Items -->
           <draggable
-            v-model="availableMedia"
+            :list="currentMedia"
             :group="{ name: 'media', pull: 'clone', put: false }"
             item-key="id"
             class="draggable-list"
@@ -131,6 +216,12 @@ const publishPlaylist = () => {
               </div>
             </template>
           </draggable>
+
+          <!-- Empty State -->
+          <div v-if="currentFolders.length === 0 && currentMedia.length === 0" class="empty-folder text-center pa-4">
+            <v-icon size="48" color="grey-lighten-2">mdi-folder-open-outline</v-icon>
+            <p class="text-body-2 text-medium-emphasis mt-2">This folder is empty</p>
+          </div>
         </div>
       </div>
 
@@ -275,6 +366,32 @@ const publishPlaylist = () => {
 .media-list-item:hover {
   border-color: #fdc704;
   box-shadow: 0 4px 12px rgba(253, 199, 4, 0.1);
+}
+
+.folder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+}
+
+.folder-item:hover {
+  border-color: #fdc704;
+  background: #fffdf5;
+  box-shadow: 0 4px 12px rgba(253, 199, 4, 0.1);
+}
+
+.breadcrumb-nav {
+  background: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
 
 .item-info {
