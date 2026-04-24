@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, toRaw } from 'vue';
 
 const props = defineProps({
   modelValue: Boolean,
@@ -84,7 +84,7 @@ watch(dialogOpen, (val) => emit('update:modelValue', val));
 const handleSubmit = async () => {
   if (files.value.length === 0) return;
 
-  const fileArray = Array.from(files.value);
+  const fileArray = Array.from(files.value).map(f => toRaw(f));
   for (const file of fileArray) {
     const sizeBytes = file.size || 0;
     const url = await new Promise(resolve => {

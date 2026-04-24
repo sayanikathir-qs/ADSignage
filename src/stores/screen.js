@@ -115,7 +115,7 @@ export const useScreensStore = defineStore("screens", {
           name: screenData.name,
           type: screenData.type || "Web",
           groupId: screenData.groupId || null,
-          status: "pending",
+          status: "offline",
           offlineAt: null,
           channel: screenData.channel || null,
           pairingCode: screenData.pairingCode || "",

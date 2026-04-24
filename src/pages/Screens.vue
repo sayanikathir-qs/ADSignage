@@ -315,10 +315,6 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
               <template v-if="screen.status === 'online'">
                 <span class="status-online">ONLINE</span>
               </template>
-              <template v-else-if="screen.status === 'pending'">
-                <span class="status-pending">PENDING</span>
-                <span class="offline-time">Waiting to pair...</span>
-              </template>
               <template v-else>
                 <span class="status-offline">OFFLINE</span>
                 <span class="offline-time" v-if="screen.offlineAt">Offline at: {{ screen.offlineAt }}</span>
@@ -1059,11 +1055,6 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
   color: #22c55e;
 }
 
-.status-pending {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #f59e0b;
-}
 
 .offline-time {
   font-size: 0.78rem;
