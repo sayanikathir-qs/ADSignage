@@ -36,6 +36,7 @@ const selectedLayout = ref(layouts.value[0])
 // Schedule modal state
 const showScheduleModal = ref(false)
 const showPreviewModal = ref(false)
+const previewSlideIndex = ref(0)
 const selectedItemIndex = ref(null)
 const selectedItem = ref(null)
 
@@ -97,6 +98,31 @@ const totalDuration = computed(() => {
   return `${h}:${m}:${s}`
 })
 
+// Flatten all media items from the playlists in this channel for preview
+const previewMediaItems = computed(() => {
+  const items = []
+  channelItems.value.forEach(playlistRef => {
+    const playlist = playlistStore.getAll.find(p => p.id === playlistRef.id)
+    if (playlist?.items?.length) {
+      playlist.items.forEach(item => items.push({ ...item, _playlistName: playlist.name }))
+    }
+  })
+  return items
+})
+
+const showDuplicateWarning = ref(false)
+const duplicatePlaylistName = ref('')
+
+const onChannelChange = (evt) => {
+  if (!evt.added) return
+  const added = evt.added.element
+  const isDuplicate = channelItems.value.filter(i => i.id === added.id).length > 1
+  if (isDuplicate) {
+    duplicatePlaylistName.value = added.name
+    showDuplicateWarning.value = true
+  }
+}
+
 const handleBack = () => router.push({ name: 'Channels' })
 
 const handleSave = async () => {
@@ -108,6 +134,7 @@ const handleSave = async () => {
 }
 
 const handlePreview = () => {
+  previewSlideIndex.value = 0
   showPreviewModal.value = true
 }
 
@@ -266,6 +293,7 @@ const handleSchedule = () => {
             item-key="uniqueId"
             class="drop-zone"
             :class="{ 'is-empty': channelItems.length === 0 }"
+            @change="onChannelChange"
           >
             <template #item="{ element, index }">
               <div :class="['channel-item', element.scheduled ? 'is-scheduled' : 'is-inactive']">
@@ -340,38 +368,72 @@ const handleSchedule = () => {
       </div>
     </div>
 
-    <!-- Preview Modal -->
-    <div v-if="showPreviewModal" class="modal-overlay" @click.self="showPreviewModal = false">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title">Channel Preview — {{ channelName }}</h3>
-          <button class="btn-close" @click="showPreviewModal = false">
-            <X :size="20" />
-          </button>
-        </div>
-        <div class="modal-body">
-          <div v-if="channelItems.length === 0" class="preview-empty">
-            <Layout :size="48" color="#fdc704" />
-            <p>No playlists added to this channel yet.</p>
-          </div>
-          <div v-else class="preview-list">
-            <div v-for="(item, i) in channelItems" :key="i" class="preview-item">
-              <span class="preview-index">{{ i + 1 }}</span>
-              <div class="preview-item-info">
-                <div class="item-name">{{ item.name }}</div>
-                <div class="item-duration">{{ item.duration }}</div>
-              </div>
-              <span :class="['status-chip', item.scheduled ? 'chip-scheduled' : 'chip-inactive']">
-                {{ item.scheduled ? 'Scheduled' : 'Inactive' }}
-              </span>
+    <!-- Preview Dialog (popup) -->
+    <v-dialog v-model="showPreviewModal" max-width="860" rounded="lg">
+      <v-card rounded="lg" elevation="8">
+        <div class="preview-dialog-header">
+          <div>
+            <div class="preview-dialog-title">Channel Preview</div>
+            <div class="preview-dialog-sub">
+              {{ channelName }}
+              <v-chip size="x-small" color="error" class="ml-2 font-weight-bold">Total: {{ totalDuration }}</v-chip>
             </div>
           </div>
+          <button class="preview-close-btn" @click="showPreviewModal = false">✕</button>
         </div>
-        <div class="modal-footer">
-          <span class="total-badge">Total: {{ totalDuration }}</span>
+        <v-divider />
+        <div class="preview-dialog-body" style="position:relative">
+          <!-- No playlists -->
+          <div v-if="channelItems.length === 0" class="preview-empty" style="height:440px">
+            <v-icon size="72" color="#fdc704">mdi-television-play</v-icon>
+            <p class="preview-empty-text">No playlists added to this channel yet.</p>
+          </div>
+          <!-- Playlists have no media -->
+          <div v-else-if="previewMediaItems.length === 0" class="preview-empty" style="height:440px">
+            <v-icon size="72" color="warning">mdi-playlist-music</v-icon>
+            <p class="preview-empty-text">Playlists have no media items yet.<br>Add media in the Playlist Builder first.</p>
+          </div>
+          <!-- Custom slider -->
+          <template v-else>
+            <template v-if="previewMediaItems[previewSlideIndex]">
+              <template v-if="previewMediaItems[previewSlideIndex].url">
+                <video v-if="previewMediaItems[previewSlideIndex].type === 'video'" controls autoplay
+                  :src="previewMediaItems[previewSlideIndex].url" class="preview-media-el" />
+                <img v-else-if="previewMediaItems[previewSlideIndex].type === 'image'"
+                  :src="previewMediaItems[previewSlideIndex].url"
+                  :alt="previewMediaItems[previewSlideIndex].name" class="preview-media-el" />
+                <iframe v-else-if="previewMediaItems[previewSlideIndex].type === 'html'"
+                  :src="previewMediaItems[previewSlideIndex].url" class="preview-media-el" style="border:none" />
+                <div v-else class="preview-empty" style="height:440px">
+                  <v-icon size="64" color="#fdc704">mdi-file-outline</v-icon>
+                  <p class="preview-empty-text">{{ previewMediaItems[previewSlideIndex].name }}</p>
+                </div>
+              </template>
+              <div v-else class="preview-empty" style="height:440px">
+                <v-icon size="64" color="#fdc704">mdi-play-circle-outline</v-icon>
+                <p class="preview-empty-text">{{ previewMediaItems[previewSlideIndex].name }}</p>
+              </div>
+            </template>
+
+            <!-- Nav arrows -->
+            <template v-if="previewMediaItems.length > 1">
+              <button class="slider-nav slider-nav--prev" :disabled="previewSlideIndex === 0"
+                @click="previewSlideIndex--">&#8249;</button>
+              <button class="slider-nav slider-nav--next" :disabled="previewSlideIndex === previewMediaItems.length - 1"
+                @click="previewSlideIndex++">&#8250;</button>
+            </template>
+
+            <!-- Chips bar -->
+            <div class="preview-item-chips" v-if="previewMediaItems[previewSlideIndex]">
+              <v-chip size="small" color="#fdc704" class="text-uppercase font-weight-bold">{{ previewMediaItems[previewSlideIndex].type }}</v-chip>
+              <v-chip size="small" color="grey-darken-1">{{ previewMediaItems[previewSlideIndex]._playlistName }}</v-chip>
+              <v-chip size="small" color="grey-darken-2" v-if="previewMediaItems[previewSlideIndex].duration">{{ previewMediaItems[previewSlideIndex].duration }}</v-chip>
+              <span class="preview-counter">{{ previewSlideIndex + 1 }} / {{ previewMediaItems.length }}</span>
+            </div>
+          </template>
         </div>
-      </div>
-    </div>
+      </v-card>
+    </v-dialog>
 
     <!-- Schedule Modal -->
     <div v-if="showScheduleModal" class="modal-overlay" @click.self="closeScheduleModal">
@@ -439,9 +501,65 @@ const handleSchedule = () => {
       </div>
     </div>
   </div>
+
+  <!-- Duplicate Playlist Warning -->
+  <v-dialog v-model="showDuplicateWarning" max-width="420" rounded="lg">
+    <v-card rounded="lg" elevation="8">
+      <div class="preview-dialog-header">
+        <div class="preview-dialog-title" style="color:#f59e0b">⚠ Duplicate Playlist</div>
+        <button class="preview-close-btn" @click="showDuplicateWarning = false">✕</button>
+      </div>
+      <v-divider />
+      <v-card-text class="pt-4 pb-2">
+        <p><strong>{{ duplicatePlaylistName }}</strong> is already in this channel.</p>
+        <p class="text-medium-emphasis mt-1" style="font-size:0.85rem">It was added again. You can keep both or remove the duplicate.</p>
+      </v-card-text>
+      <v-card-actions class="pa-4 pt-0 d-flex justify-end">
+        <v-btn variant="flat" color="warning" @click="showDuplicateWarning = false">OK, Keep Both</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
+/* ── Preview popup ──────────────────── */
+.preview-dialog-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; padding: 1rem 1.25rem 0.875rem;
+}
+.preview-dialog-title { font-size: 1rem; font-weight: 700; color: #111; }
+.preview-dialog-sub { font-size: 0.8rem; color: #6b7280; margin-top: 2px; display: flex; align-items: center; }
+.preview-close-btn {
+  background: #f3f4f6; border: none; border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  color: #374151; flex-shrink: 0; font-size: 0.85rem;
+}
+.preview-close-btn:hover { background: #e5e7eb; }
+.preview-dialog-body { background: #111; }
+.preview-media-frame {
+  width: 100%; height: 440px; display: flex; align-items: center;
+  justify-content: center; background: #000;
+}
+.preview-media-el { width: 100%; height: 440px; object-fit: contain; background: #000; display: block; }
+.preview-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 300px; gap: 1rem;
+}
+.preview-empty-text { color: #9ca3af; font-size: 0.9rem; text-align: center; }
+.preview-item-chips { display: flex; gap: 6px; padding: 8px 12px; background: #1a1a1a; align-items: center; }
+.preview-counter { color: #9ca3af; font-size: 0.78rem; margin-left: auto; }
+.slider-nav {
+  position: absolute; top: calc(440px / 2); transform: translateY(-50%);
+  background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 50%;
+  width: 40px; height: 40px; font-size: 1.6rem; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s; z-index: 10;
+}
+.slider-nav:hover:not(:disabled) { background: rgba(0,0,0,0.85); }
+.slider-nav:disabled { opacity: 0.3; cursor: default; }
+.slider-nav--prev { left: 10px; }
+.slider-nav--next { right: 10px; }
+
 .channel-builder {
   display: flex;
   flex-direction: column;

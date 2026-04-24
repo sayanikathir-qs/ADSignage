@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useScreensStore } from '@/stores/screen'
 import { useChannelsStore } from '@/stores/channel'
+import { usePlaylistStore } from '@/stores/playlist'
 import {
   Monitor,
   Search,
@@ -22,6 +23,7 @@ import {
 
 const screensStore = useScreensStore()
 const channelsStore = useChannelsStore()
+const playlistStore = usePlaylistStore()
 
 const searchQuery = ref('')
 
@@ -29,6 +31,7 @@ const searchQuery = ref('')
 onMounted(async () => {
   await screensStore.fetchScreens()
   await channelsStore.fetchChannels()
+  await playlistStore.fetchPlaylists()
 })
 
 // Computed properties from store
@@ -123,6 +126,47 @@ const handleCreateGroup = async () => {
   showNewGroup.value = false
 }
 
+// ── Edit Group Dialog ─────────────────────────────────
+const showEditGroup = ref(false)
+const editingGroup = ref(null)
+const editGroupScreenIds = ref([])
+
+const openEditGroupDialog = (group) => {
+  editingGroup.value = group
+  editGroupScreenIds.value = localScreens.value
+    .filter(s => s.groupId === group.id)
+    .map(s => s.id)
+  showEditGroup.value = true
+}
+
+const handleEditGroup = async () => {
+  if (!editingGroup.value) return
+  const groupId = editingGroup.value.id
+  for (const screen of localScreens.value) {
+    const selected = editGroupScreenIds.value.includes(screen.id)
+    const inGroup = screen.groupId === groupId
+    if (selected && !inGroup) await screensStore.assignScreenToGroup(screen.id, groupId)
+    if (!selected && inGroup) await screensStore.removeScreenFromGroup(screen.id)
+  }
+  showEditGroup.value = false
+}
+
+// ─ Delete Group Dialog ────────────────────────────────
+const showDeleteGroup = ref(false)
+const deletingGroup = ref(null)
+
+const confirmDeleteGroup = (group) => {
+  deletingGroup.value = group
+  showDeleteGroup.value = true
+}
+
+const handleDeleteGroup = async () => {
+  if (!deletingGroup.value) return
+  await screensStore.deleteGroup(deletingGroup.value.id)
+  showDeleteGroup.value = false
+  deletingGroup.value = null
+}
+
 // ─ Assign Channel to Group Dialog ────────────────────
 const showAssignChannel = ref(false)
 const assignChannelGroup = ref(null)
@@ -178,47 +222,31 @@ const handleMenuAction = async (action, screenId) => {
   }
 }
 
-// ── Screen Preview (Fullscreen - follows Media.vue pattern) ─────────
+// ── Screen Preview ─────────────────────────────────────────────
 const showPreviewDialog = ref(false)
 const previewScreen = ref(null)
+const previewIndex = ref(0)
 const refreshing = ref(false)
 
 const openPreview = (screen) => {
   previewScreen.value = screen
+  previewIndex.value = 0
   showPreviewDialog.value = true
 }
 
-const getChannelPreviewUrl = (channelName) => {
-  if (!channelName) return null
+// Return the actual media items across all playlists in the channel
+const getChannelItems = (channelName) => {
+  if (!channelName) return []
   const channel = channelsStore.channels.find(c => c.name === channelName)
-  if (channel?.previewUrl) return channel.previewUrl
-  // Mock previews for demo
-  const mockPreviews = {
-    'star sports': 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&mute=1',
-    'DEMO 37': 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&mute=1',
-    'YT 2 video': 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&mute=1',
-  }
-  return mockPreviews[channelName] || null
-}
-
-const getGroupName = (groupId) => {
-  if (!groupId) return null
-  const group = localGroups.value.find(g => g.id === groupId)
-  return group?.name || null
-}
-
-const refreshScreenPreview = async () => {
-  if (!previewScreen.value) return
-  refreshing.value = true
-  try {
-    await screensStore.fetchScreens()
-    const updated = localScreens.value.find(s => s.id === previewScreen.value.id)
-    if (updated) previewScreen.value = { ...updated }
-  } catch (error) {
-    console.error('Error refreshing preview:', error)
-  } finally {
-    refreshing.value = false
-  }
+  if (!channel?.items?.length) return []
+  const mediaItems = []
+  channel.items.forEach(playlistRef => {
+    const playlist = playlistStore.playlistItems.find(p => p.id === playlistRef.id)
+    if (playlist?.items?.length) {
+      playlist.items.forEach(item => mediaItems.push({ ...item, _playlistName: playlist.name }))
+    }
+  })
+  return mediaItems
 }
 
 const menuItems = [
@@ -268,7 +296,7 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 
     <!-- Ungrouped Screens -->
     <div v-if="ungroupedScreens.length > 0" class="ungrouped-section">
-      <!-- <h3 class="section-title">Ungrouped Screens</h3> -->
+      
       <div class="screens-list">
         <div
           v-for="screen in ungroupedScreens"
@@ -284,8 +312,17 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
               <span v-if="screen.type" class="type-badge">{{ screen.type }}</span>
             </div>
             <div class="screen-status">
-              <span class="status-offline">OFFLINE</span>
-              <span class="offline-time">Offline at: {{ screen.offlineAt }}</span>
+              <template v-if="screen.status === 'online'">
+                <span class="status-online">ONLINE</span>
+              </template>
+              <template v-else-if="screen.status === 'pending'">
+                <span class="status-pending">PENDING</span>
+                <span class="offline-time">Waiting to pair...</span>
+              </template>
+              <template v-else>
+                <span class="status-offline">OFFLINE</span>
+                <span class="offline-time" v-if="screen.offlineAt">Offline at: {{ screen.offlineAt }}</span>
+              </template>
             </div>
           </div>
           <div class="screen-channel" v-if="screen.channel">
@@ -341,15 +378,15 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
               </button>
             </template>
             <v-list density="compact" min-width="180">
+              <v-list-item @click="openEditGroupDialog(group)">
+                <template #prepend><Pencil :size="14" class="mr-2" /></template>
+                <v-list-item-title>Edit Group</v-list-item-title>
+              </v-list-item>
               <v-list-item @click="openAssignChannelDialog(group)">
                 <template #prepend><Tv2 :size="14" class="mr-2" /></template>
                 <v-list-item-title>Assign Channel to Group</v-list-item-title>
               </v-list-item>
-              <v-list-item @click="console.log('rename group', group.id)">
-                <template #prepend><Pencil :size="14" class="mr-2" /></template>
-                <v-list-item-title>Rename Group</v-list-item-title>
-              </v-list-item>
-              <v-list-item @click="console.log('delete group', group.id)" base-color="error">
+              <v-list-item @click="confirmDeleteGroup(group)" base-color="error">
                 <template #prepend><Trash2 :size="14" class="mr-2" /></template>
                 <v-list-item-title>Delete Group</v-list-item-title>
               </v-list-item>
@@ -372,8 +409,16 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
               <span v-if="screen.type" class="type-badge">{{ screen.type }}</span>
             </div>
             <div class="screen-status">
-              <span class="status-offline">OFFLINE</span>
-              <span class="offline-time">Offline at: {{ screen.offlineAt }}</span>
+              <template v-if="screen.status === 'online'">
+              </template>
+              <template v-else-if="screen.status === 'pending'">
+                <span class="status-pending">PENDING</span>
+                <span class="offline-time">Waiting to pair...</span>
+              </template>
+              <template v-else>
+                <span class="status-offline">OFFLINE</span>
+                <span class="offline-time" v-if="screen.offlineAt">Offline at: {{ screen.offlineAt }}</span>
+              </template>
             </div>
           </div>
           <div class="screen-channel" v-if="screen.channel">
@@ -418,7 +463,7 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
   </div>
 
   <!-- ── Create New Screen Dialog ──────────────────── -->
-  <div v-if="showNewScreen" class="dialog-overlay" @click.self="showNewScreen = false">
+  <v-dialog v-model="showNewScreen" max-width="500" rounded="lg">
     <div class="dialog-box">
       <div class="dialog-head">
         <h3>Create New Screen</h3>
@@ -477,10 +522,10 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
         <button class="btn-dlg-primary" @click="handleAddScreen">Add New Screen</button>
       </div>
     </div>
-  </div>
+  </v-dialog>
 
   <!-- ── Create New Screen Group Dialog ────────────── -->
-  <div v-if="showNewGroup" class="dialog-overlay" @click.self="showNewGroup = false">
+  <v-dialog v-model="showNewGroup" max-width="440" rounded="lg">
     <div class="dialog-box dialog-box--sm">
       <div class="dialog-head">
         <h3>Create Screen Group</h3>
@@ -519,10 +564,50 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
         <button class="btn-dlg-primary" @click="handleCreateGroup">Create Group</button>
       </div>
     </div>
-  </div>
+  </v-dialog>
+
+  <!-- ── Edit Group Dialog ────────────────────────── -->
+  <v-dialog v-model="showEditGroup" max-width="440" rounded="lg">
+    <div class="dialog-box dialog-box--sm">
+      <div class="dialog-head">
+        <h3>Edit Group — {{ editingGroup?.name }}</h3>
+        <button class="dlg-close" @click="showEditGroup = false"><X :size="20" /></button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="form-group">
+          <label>Select screens for this group</label>
+          <div class="screens-select-list">
+            <div v-if="localScreens.length === 0" class="no-screens">No screens available</div>
+            <label
+              v-for="screen in localScreens"
+              :key="screen.id"
+              class="screen-check-item"
+            >
+              <input
+                type="checkbox"
+                :value="screen.id"
+                v-model="editGroupScreenIds"
+              />
+              <Monitor :size="16" color="#fdc704" />
+              <span>{{ screen.name }}</span>
+              <span v-if="screen.type" class="type-tag">{{ screen.type }}</span>
+              <span v-if="screen.groupId && screen.groupId !== editingGroup?.id" class="type-tag" style="color:#9ca3af">
+                (in another group)
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="dialog-foot">
+        <button class="btn-dlg-primary" @click="handleEditGroup">Save Changes</button>
+      </div>
+    </div>
+  </v-dialog>
 
   <!-- ── Assign Channel to Group Dialog ────────────── -->
-  <div v-if="showAssignChannel" class="dialog-overlay" @click.self="showAssignChannel = false">
+  <v-dialog v-model="showAssignChannel" max-width="440" rounded="lg">
     <div class="dialog-box dialog-box--sm">
       <div class="dialog-head">
         <h3>Assign Channel to "{{ assignChannelGroup?.name }}"</h3>
@@ -546,8 +631,8 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
       </div>
 
       <div class="dialog-foot">
-        <button 
-          class="btn-dlg-primary" 
+        <button
+          class="btn-dlg-primary"
           @click="handleAssignChannelToGroup"
           :disabled="localScreens.filter(s => s.groupId === assignChannelGroup?.id).length === 0"
         >
@@ -555,10 +640,10 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
         </button>
       </div>
     </div>
-  </div>
+  </v-dialog>
 
   <!-- ── Set Content Dialog (Individual Screen) ────── -->
-  <div v-if="showSetContent" class="dialog-overlay" @click.self="showSetContent = false">
+  <v-dialog v-model="showSetContent" max-width="440" rounded="lg">
     <div class="dialog-box dialog-box--sm">
       <div class="dialog-head">
         <h3>Set Content for "{{ contentScreen?.name }}"</h3>
@@ -584,182 +669,181 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
         </button>
       </div>
     </div>
-  </div>
+  </v-dialog>
 
-  <!-- ── Screen Preview Dialog (Fullscreen - follows Media.vue) ────────────── -->
-  <v-dialog v-model="showPreviewDialog" fullscreen transition="dialog-bottom-transition">
-    <v-card class="bg-black" v-if="previewScreen">
-      <!-- Toolbar -->
-      <v-toolbar color="rgba(0,0,0,0.8)" class="text-white">
-        <v-btn icon variant="text" @click="showPreviewDialog = false">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-        <v-toolbar-title class="font-weight-bold">
-          Screen Preview - {{ previewScreen.name }}
-        </v-toolbar-title>
-        <v-spacer></v-spacer>
-        <!-- Status Badge -->
-        <v-chip 
-          :color="previewScreen.status === 'online' ? 'success' : 'error'" 
-          class="mr-3 text-uppercase font-weight-bold"
-          size="small"
-        >
-          {{ previewScreen.status }}
-        </v-chip>
-        <!-- Screen Type -->
-        <v-chip color="warning" class="mr-3 text-uppercase font-weight-bold" size="small">
-          {{ previewScreen.type }}
-        </v-chip>
-      </v-toolbar>
-      
-      <v-card-text class="pa-0 bg-black">
-        <v-sheet 
-          height="calc(100vh - 64px)" 
-          width="100%" 
-          color="transparent" 
-          class="d-flex flex-column align-center justify-center"
-        >
-          <!-- Screen has channel assigned -->
-          <template v-if="previewScreen?.channel">
-            <!-- Online Screen - Show actual preview -->
-            <template v-if="previewScreen.status === 'online'">
-              <div class="preview-container">
-                <!-- Channel Preview Frame -->
-                <iframe
-                  v-if="getChannelPreviewUrl(previewScreen.channel)"
-                  :src="getChannelPreviewUrl(previewScreen.channel)"
-                  class="channel-preview-frame"
-                  frameborder="0"
-                  allowfullscreen
-                  allow="autoplay; fullscreen; picture-in-picture"
-                ></iframe>
-                
-                <!-- Fallback: Channel placeholder -->
-                <div v-else class="preview-placeholder">
-                  <v-icon size="120" color="warning">mdi-television</v-icon>
-                  <h2 class="text-white mt-6">{{ previewScreen.channel }}</h2>
-                  <p class="text-medium-emphasis mt-2">Channel content preview</p>
-                </div>
-              </div>
-              
-              <!-- Channel Info Bar -->
-              <div class="d-flex align-center mt-4">
-                <v-chip color="warning" class="mr-3 text-uppercase font-weight-bold">
-                  {{ previewScreen.channel }}
-                </v-chip>
-                <span class="text-medium-emphasis">
-                  <v-icon size="16" class="mr-1">mdi-clock</v-icon>
-                  Playing since: {{ previewScreen.lastConnected || 'N/A' }}
-                </span>
-              </div>
-            </template>
-            
-            <!-- Offline Screen - Show placeholder with status -->
-            <template v-else>
-              <div class="preview-container offline">
-                <v-icon size="120" color="grey">mdi-television-off</v-icon>
-                <h2 class="text-white mt-6">{{ previewScreen.channel }}</h2>
-                <p class="text-medium-emphasis mt-2">Screen is offline</p>
-                <div class="offline-overlay">
-                  <v-chip color="error" class="text-uppercase font-weight-bold">
-                    <v-icon start size="small">mdi-wifi-off</v-icon>
-                    Offline
-                  </v-chip>
-                </div>
-              </div>
-              
-              <!-- Offline Info -->
-              <div class="d-flex align-center mt-4">
-                <v-chip color="warning" class="mr-3 text-uppercase font-weight-bold">
-                  {{ previewScreen.channel }}
-                </v-chip>
-                <span class="text-error">
-                  <v-icon size="16" class="mr-1">mdi-alert-circle</v-icon>
-                  Last offline: {{ previewScreen.offlineAt }}
-                </span>
-              </div>
-              <p class="text-grey mt-2 text-center">
-                Content will play automatically when screen comes back online.
-              </p>
-            </template>
-          </template>
-          
-          <!-- No channel assigned -->
-          <template v-else>
-            <v-icon size="120" color="grey">mdi-television-off</v-icon>
-            <h2 class="text-white mt-6">No Channel Assigned</h2>
-            <p class="text-medium-emphasis mt-2">This screen is not playing any content.</p>
-            <v-btn 
-              color="warning" 
-              class="mt-4"
-              prepend-icon="mdi-link"
-              @click="openSetContentDialog(previewScreen); showPreviewDialog = false;"
-            >
-              Assign Channel
-            </v-btn>
-          </template>
-          
-          <!-- Screen Details Footer -->
-          <div class="screen-details-footer mt-auto mb-4">
-            <v-card class="bg-grey-darken-3" variant="outlined" max-width="600">
-              <v-card-text class="py-3">
-                <div class="d-flex justify-space-between align-center flex-wrap">
-                  <div>
-                    <p class="text-caption text-grey mb-1">Screen Name</p>
-                    <p class="text-subtitle-2 font-weight-bold">{{ previewScreen.name }}</p>
-                  </div>
-                  <div>
-                    <p class="text-caption text-grey mb-1">Pairing Code</p>
-                    <p class="text-subtitle-2 font-weight-mono">{{ previewScreen.pairingCode }}</p>
-                  </div>
-                  <div>
-                    <p class="text-caption text-grey mb-1">Group</p>
-                    <p class="text-subtitle-2">
-                      {{ getGroupName(previewScreen.groupId) || 'Ungrouped' }}
-                    </p>
-                  </div>
-                </div>
-              </v-card-text>
-            </v-card>
+  <!-- ── Screen Preview Dialog (popup) ──────────────────── -->
+  <v-dialog v-model="showPreviewDialog" max-width="860" rounded="lg">
+    <v-card v-if="previewScreen" rounded="lg" elevation="8">
+      <div class="preview-dialog-header">
+        <div>
+          <div class="preview-dialog-title">Screen Preview</div>
+          <div class="preview-dialog-sub">{{ previewScreen.name }}
+            <v-chip v-if="previewScreen.channel" size="x-small" color="warning" class="ml-2 font-weight-bold text-uppercase">
+              {{ previewScreen.channel }}
+            </v-chip>
           </div>
-        </v-sheet>
+        </div>
+        <button class="preview-close-btn" @click="showPreviewDialog = false"><X :size="20" /></button>
+      </div>
+      <v-divider />
+      <div class="preview-dialog-body" style="position:relative">
+        <!-- No channel -->
+        <div v-if="!previewScreen.channel" class="preview-empty" style="height:440px">
+          <v-icon size="72" color="grey">mdi-television-off</v-icon>
+          <p class="preview-empty-text">No channel assigned to this screen.</p>
+        </div>
+        <!-- Channel has no media -->
+        <div v-else-if="getChannelItems(previewScreen.channel).length === 0" class="preview-empty" style="height:440px">
+          <v-icon size="72" color="warning">mdi-television</v-icon>
+          <p class="preview-empty-text">No media in this channel's playlists yet.</p>
+        </div>
+        <!-- Custom slider -->
+        <template v-else>
+          <template v-if="getChannelItems(previewScreen.channel)[previewIndex]">
+            <template v-if="getChannelItems(previewScreen.channel)[previewIndex].url">
+              <video v-if="getChannelItems(previewScreen.channel)[previewIndex].type === 'video'" controls autoplay
+                :src="getChannelItems(previewScreen.channel)[previewIndex].url" class="preview-media-el" />
+              <img v-else-if="getChannelItems(previewScreen.channel)[previewIndex].type === 'image'"
+                :src="getChannelItems(previewScreen.channel)[previewIndex].url"
+                :alt="getChannelItems(previewScreen.channel)[previewIndex].name" class="preview-media-el" />
+              <iframe v-else-if="getChannelItems(previewScreen.channel)[previewIndex].type === 'html'"
+                :src="getChannelItems(previewScreen.channel)[previewIndex].url" class="preview-media-el" style="border:none" />
+              <div v-else class="preview-empty" style="height:440px">
+                <v-icon size="64" color="#fdc704">mdi-file-outline</v-icon>
+                <p class="preview-empty-text">{{ getChannelItems(previewScreen.channel)[previewIndex].name }}</p>
+              </div>
+            </template>
+            <div v-else class="preview-empty" style="height:440px">
+              <v-icon size="64" color="#fdc704">mdi-play-circle-outline</v-icon>
+              <p class="preview-empty-text">{{ getChannelItems(previewScreen.channel)[previewIndex].name }}</p>
+            </div>
+          </template>
+
+          <template v-if="getChannelItems(previewScreen.channel).length > 1">
+            <button class="slider-nav slider-nav--prev" :disabled="previewIndex === 0"
+              @click="previewIndex--">&#8249;</button>
+            <button class="slider-nav slider-nav--next"
+              :disabled="previewIndex === getChannelItems(previewScreen.channel).length - 1"
+              @click="previewIndex++">&#8250;</button>
+          </template>
+
+          <div class="preview-item-chips" v-if="getChannelItems(previewScreen.channel)[previewIndex]">
+            <v-chip size="small" color="#fdc704" class="text-uppercase font-weight-bold">{{ getChannelItems(previewScreen.channel)[previewIndex].type }}</v-chip>
+            <v-chip size="small" color="grey-darken-2">{{ getChannelItems(previewScreen.channel)[previewIndex]._playlistName }}</v-chip>
+            <v-chip size="small" color="grey-darken-3" v-if="getChannelItems(previewScreen.channel)[previewIndex].duration">{{ getChannelItems(previewScreen.channel)[previewIndex].duration }}</v-chip>
+            <span class="preview-counter">{{ previewIndex + 1 }} / {{ getChannelItems(previewScreen.channel).length }}</span>
+          </div>
+        </template>
+      </div>
+    </v-card>
+  </v-dialog>
+
+  <!-- ── Delete Group Confirm ──────────────────────────── -->
+  <v-dialog v-model="showDeleteGroup" max-width="420" rounded="lg">
+    <v-card rounded="lg" elevation="8">
+      <div class="preview-dialog-header">
+        <div class="preview-dialog-title">Delete Group</div>
+        <button class="preview-close-btn" @click="showDeleteGroup = false"><X :size="20" /></button>
+      </div>
+      <v-divider />
+      <v-card-text class="pt-5 pb-2">
+        <p>Are you sure you want to delete <strong>{{ deletingGroup?.name }}</strong>?</p>
+        <p class="text-medium-emphasis text-sm mt-1">Screens in this group will become ungrouped.</p>
       </v-card-text>
-      
-      <!-- Action Buttons -->
-      <v-card-actions class="bg-black pa-4" style="position: absolute; bottom: 0; width: 100%;">
-        <v-spacer></v-spacer>
-        <v-btn 
-          variant="outlined" 
-          color="grey"
-          @click="showPreviewDialog = false"
-        >
-          Close
-        </v-btn>
-        <v-btn 
-          v-if="previewScreen?.channel"
-          color="warning"
-          class="ml-3"
-          prepend-icon="mdi-refresh"
-          @click="refreshScreenPreview"
-          :loading="refreshing"
-        >
-          Refresh
-        </v-btn>
-        <v-btn 
-          v-if="!previewScreen?.channel"
-          color="warning"
-          class="ml-3"
-          prepend-icon="mdi-link"
-          @click="openSetContentDialog(previewScreen); showPreviewDialog = false;"
-        >
-          Set Content
-        </v-btn>
+      <v-card-actions class="pa-4 pt-0 d-flex justify-end ga-2">
+        <v-btn variant="outlined" @click="showDeleteGroup = false">Cancel</v-btn>
+        <v-btn color="error" variant="flat" @click="handleDeleteGroup">Delete</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <style scoped>
+/* ── Preview popup shared styles ─────── */
+.preview-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.875rem;
+}
+.preview-dialog-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111;
+}
+.preview-dialog-sub {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.preview-close-btn {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #374151;
+  flex-shrink: 0;
+}
+.preview-close-btn:hover { background: #e5e7eb; }
+.preview-dialog-body {
+  background: #111;
+  min-height: 200px;
+}
+.preview-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  gap: 1rem;
+}
+.preview-empty-text {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  text-align: center;
+}
+.preview-media-frame {
+  width: 100%;
+  height: 440px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+.preview-media-el {
+  width: 100%;
+  height: 440px;
+  object-fit: contain;
+  background: #000;
+}
+.preview-item-chips {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  align-items: center;
+}
+.preview-counter { color: #9ca3af; font-size: 0.78rem; margin-left: auto; }
+.slider-nav {
+  position: absolute; top: 220px; transform: translateY(-50%);
+  background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 50%;
+  width: 40px; height: 40px; font-size: 1.6rem; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s; z-index: 10;
+}
+.slider-nav:hover:not(:disabled) { background: rgba(0,0,0,0.85); }
+.slider-nav:disabled { opacity: 0.3; cursor: default; }
+.slider-nav--prev { left: 10px; }
+.slider-nav--next { right: 10px; }
+
 .screens-page {
   padding: 1.5rem 2rem;
   min-height: 100%;
@@ -969,6 +1053,18 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
   color: #ef4444;
 }
 
+.status-online {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.status-pending {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
 .offline-time {
   font-size: 0.78rem;
   color: #ef4444;
@@ -1062,32 +1158,15 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 }
 
 /* ── Dialogs ───────────────────────────────────── */
-.dialog-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
 .dialog-box {
-  background: white; border-radius: 14px;
-  width: 90%; max-width: 480px;
-  max-height: 90vh; overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-  animation: slideUp 0.25s ease;
+  background: white;
+  border-radius: 14px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
 }
-
-.dialog-box--sm {
-  max-width: 420px;
-}
-
-.dialog-box--md {
-  max-width: 500px;
-}
+.dialog-box--sm { width: 100%; }
+.dialog-box--md { width: 100%; }
 
 .dialog-head {
   display: flex; justify-content: space-between; align-items: center;
@@ -1205,73 +1284,4 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 .font-weight-bold { font-weight: 700; }
 .text-medium-emphasis { color: #6b7280; }
 .text-grey-darken-1 { color: #4b5563; }
-
-/* ── Preview Styles (Fullscreen Dialog) ───────────── */
-.preview-container {
-  width: 100%;
-  max-width: 1280px;
-  aspect-ratio: 16/9;
-  background: #1f2937;
-  border-radius: 16px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-.preview-container.offline {
-  opacity: 0.8;
-}
-
-.channel-preview-frame {
-  width: 100%;
-  height: 100%;
-  border: none;
-}
-
-.preview-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-}
-
-.offline-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.screen-details-footer {
-  padding: 0 2rem;
-}
-
-.font-weight-mono {
-  font-family: monospace;
-  letter-spacing: 2px;
-}
-
-.text-grey {
-  color: #9ca3af !important;
-}
-
-/* Responsive */
-@media (max-width: 960px) {
-  .preview-container {
-    max-width: 100%;
-    margin: 0 1rem;
-  }
-  .screen-details-footer {
-    padding: 0 1rem;
-  }
-}
 </style>

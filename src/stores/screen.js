@@ -114,15 +114,9 @@ export const useScreensStore = defineStore("screens", {
           id: Date.now(),
           name: screenData.name,
           type: screenData.type || "Web",
-          groupId: screenData.groupId || null, // NOT auto-assigned
-          status: "offline",
-          offlineAt: new Date().toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          }),
+          groupId: screenData.groupId || null,
+          status: "pending",
+          offlineAt: null,
           channel: screenData.channel || null,
           pairingCode: screenData.pairingCode || "",
           freeTrial: screenData.freeTrial || false,

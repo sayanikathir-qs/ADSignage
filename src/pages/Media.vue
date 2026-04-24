@@ -327,51 +327,39 @@
     />
 
     <!-- Preview Dialog -->
-    <v-dialog v-model="previewDialog.open" fullscreen transition="dialog-bottom-transition">
-      <v-card class="bg-black" v-if="previewDialog.item">
-        <v-toolbar color="rgba(0,0,0,0.8)" class="text-white">
-          <v-btn icon variant="text" @click="previewDialog.open = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-          <v-toolbar-title class="font-weight-bold">Media Preview - {{ previewDialog.item.name }}</v-toolbar-title>
-        </v-toolbar>
-        
-        <v-card-text class="pa-0 bg-black">
-          <v-sheet height="calc(100vh - 64px)" width="100%" color="transparent" class="d-flex flex-column align-center justify-center">
-            <template v-if="previewDialog.item.url">
-              <video
-                v-if="previewDialog.item.type === 'video'"
-                controls
-                autoplay
-                :src="previewDialog.item.url"
-                style="max-height:80vh;max-width:100%"
-              />
-              <img
-                v-else-if="previewDialog.item.type === 'image'"
-                :src="previewDialog.item.url"
-                :alt="previewDialog.item.name"
-                style="max-height:80vh;max-width:100%;object-fit:contain"
-              />
-              <iframe
-                v-else-if="previewDialog.item.type === 'html'"
-                :src="previewDialog.item.url"
-                style="width:100%;height:80vh;border:none"
-              />
-              <template v-else>
-                <v-icon size="120" :color="getIconColor(previewDialog.item.type)">{{ getPreviewIcon(previewDialog.item.type) }}</v-icon>
-                <h2 class="text-white mt-6">{{ previewDialog.item.name }}</h2>
-              </template>
-            </template>
-            <template v-else>
-              <v-icon size="120" :color="getIconColor(previewDialog.item.type)">{{ getPreviewIcon(previewDialog.item.type) }}</v-icon>
-              <h2 class="text-white mt-6">{{ previewDialog.item.name }}</h2>
-            </template>
-            <div class="d-flex align-center mt-4">
-              <v-chip :color="getIconColor(previewDialog.item.type)" class="mr-3 text-uppercase font-weight-bold">{{ previewDialog.item.type }}</v-chip>
-              <span class="text-medium-emphasis text-h6">Duration: {{ previewDialog.item.duration || '00:10' }}</span>
+    <v-dialog v-model="previewDialog.open" max-width="860" rounded="lg">
+      <v-card v-if="previewDialog.item" rounded="lg" elevation="8">
+        <div class="preview-dialog-header">
+          <div>
+            <div class="preview-dialog-title">Media Preview</div>
+            <div class="preview-dialog-sub">{{ previewDialog.item.name }}</div>
+          </div>
+          <button class="preview-close-btn" @click="previewDialog.open = false">✕</button>
+        </div>
+        <v-divider />
+        <div class="preview-dialog-body">
+          <template v-if="previewDialog.item.url">
+            <video v-if="previewDialog.item.type === 'video'" controls autoplay
+              :src="previewDialog.item.url" class="preview-media-el" />
+            <img v-else-if="previewDialog.item.type === 'image'"
+              :src="previewDialog.item.url" :alt="previewDialog.item.name" class="preview-media-el" />
+            <iframe v-else-if="previewDialog.item.type === 'html'"
+              :src="previewDialog.item.url" class="preview-media-el" style="border:none" />
+            <div v-else class="preview-empty">
+              <v-icon size="72" :color="getIconColor(previewDialog.item.type)">{{ getPreviewIcon(previewDialog.item.type) }}</v-icon>
+              <p class="preview-empty-text">{{ previewDialog.item.name }}</p>
             </div>
-          </v-sheet>
-        </v-card-text>
+          </template>
+          <div v-else class="preview-empty">
+            <v-icon size="72" :color="getIconColor(previewDialog.item.type)">{{ getPreviewIcon(previewDialog.item.type) }}</v-icon>
+            <p class="preview-empty-text">{{ previewDialog.item.name }}</p>
+          </div>
+        </div>
+        <div class="preview-item-chips">
+          <v-chip size="small" :color="getIconColor(previewDialog.item.type)" class="text-uppercase font-weight-bold">{{ previewDialog.item.type }}</v-chip>
+          <v-chip size="small" color="grey-darken-2" v-if="previewDialog.item.duration">{{ previewDialog.item.duration }}</v-chip>
+          <v-chip size="small" color="grey-darken-2" v-if="previewDialog.item.size">{{ previewDialog.item.size }}</v-chip>
+        </div>
       </v-card>
     </v-dialog>
   </div>
@@ -647,6 +635,33 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* ── Preview popup ─────────────────────── */
+.preview-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.875rem;
+}
+.preview-dialog-title { font-size: 1rem; font-weight: 700; color: #111; }
+.preview-dialog-sub { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+.preview-close-btn {
+  background: #f3f4f6; border: none; border-radius: 50%;
+  width: 32px; height: 32px; display: flex; align-items: center;
+  justify-content: center; cursor: pointer; color: #374151; flex-shrink: 0;
+  font-size: 0.85rem;
+}
+.preview-close-btn:hover { background: #e5e7eb; }
+.preview-dialog-body { background: #111; min-height: 200px; }
+.preview-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 300px; gap: 1rem;
+}
+.preview-empty-text { color: #9ca3af; font-size: 0.9rem; text-align: center; }
+.preview-media-el {
+  width: 100%; height: 480px; object-fit: contain; background: #000; display: block;
+}
+.preview-item-chips { display: flex; gap: 6px; padding: 8px 12px; background: #1a1a1a; }
+
 .media-page {
   padding: 32px 40px;
   max-width: 1440px;

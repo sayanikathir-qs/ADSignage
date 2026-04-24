@@ -83,16 +83,17 @@ export const useChannelsStore = defineStore("channels", {
         await new Promise((resolve) => setTimeout(resolve, 600));
 
         const newChannel = {
-          id: Date.now(),
-          name: channelData.name,
-          customer: channelData.customer,
-          location: channelData.location || "",
-          status: channelData.status || "inactive",
-          playlistId: channelData.playlistId || null,
-          screenId: channelData.screenId || null,
-          lastConnected: null,
-          date: new Date().toISOString().split("T")[0],
-        };
+    id: Date.now(),
+    name: channelData.name,
+    url: channelData.url || `https://via.placeholder.com/1920x1080/fdc704/ffffff?text=${encodeURIComponent(channelData.name)}`, // ✅ ADD THIS LINE
+    customer: channelData.customer,
+    location: channelData.location || "",
+    status: channelData.status || "Draft",
+    playlistId: channelData.playlistId || null,
+    screenId: channelData.screenId || null,
+    lastConnected: null,
+    date: new Date().toISOString().split("T")[0],
+  }
 
         this.channels.unshift(newChannel);
         this._saveToStorage();

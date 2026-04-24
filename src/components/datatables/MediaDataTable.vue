@@ -245,7 +245,7 @@ const formatDate = (dateString) => {
                     base-color="error"
                   >
                     <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
-                    <v-list-item-title>Delete Folder</v-list-item-title>
+                    <v-list-item-title>Delete</v-list-item-title>
                   </v-list-item>
                 </v-list>
               </v-menu>

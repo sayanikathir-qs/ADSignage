@@ -58,6 +58,19 @@ const navigateToRoot = () => {
 // Selected items (right pane drop zone)
 const playlistItems = ref([])
 
+const showDuplicateWarning = ref(false)
+const duplicateMediaName = ref('')
+
+const onPlaylistChange = (evt) => {
+  if (!evt.added) return
+  const added = evt.added.element
+  const isDuplicate = playlistItems.value.filter(i => i.id === added.id).length > 1
+  if (isDuplicate) {
+    duplicateMediaName.value = added.name
+    showDuplicateWarning.value = true
+  }
+}
+
 const tabs = ['Media', 'Library', 'Canvas', 'Apps', 'Settings']
 const activeTab = ref('Media')
 
@@ -151,13 +164,21 @@ const publishPlaylist = async () => {
     <!-- Header -->
     <div class="builder-header">
       <div class="d-flex align-center ga-2">
-        <v-btn icon="mdi-menu" variant="text" color="#fdc704"></v-btn>
-        <span class="text-h6 font-weight-bold">{{ props.playlist.name }}</span>
+        <button class="hdr-btn hdr-btn--back" @click="emit('back')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+        <span class="builder-title">{{ props.playlist.name }}</span>
       </div>
       <div class="header-actions">
-        <v-btn prepend-icon="mdi-publish" color="#fdc704" variant="flat"  @click="publishPlaylist">Publish</v-btn>
-        <v-btn prepend-icon="mdi-eye" color="#fdc704" variant="outlined" class="text-none" @click="handlePreview" :disabled="playlistItems.length === 0">Preview</v-btn>
-        <v-btn prepend-icon="mdi-arrow-left"  color="#fdc704" variant="flat"  @click="emit('back')">  Back</v-btn> 
+        <button class="hdr-btn hdr-btn--preview" @click="handlePreview" :disabled="playlistItems.length === 0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          Preview
+        </button>
+        <button class="hdr-btn hdr-btn--publish" @click="publishPlaylist">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          Publish
+        </button>
       </div>
     </div>
 
@@ -238,6 +259,7 @@ const publishPlaylist = async () => {
           item-key="uniqueId"
           class="drop-zone"
           :class="{ 'is-empty': playlistItems.length === 0 }"
+          @change="onPlaylistChange"
         >
           <template #item="{ element, index }">
             <div class="playlist-row-item">
@@ -264,36 +286,116 @@ const publishPlaylist = async () => {
       </div>
     </div>
 
-    <!-- Preview Dialog -->
-    <v-dialog v-model="previewDialog" fullscreen transition="dialog-bottom-transition">
-      <v-card class="bg-black">
-        <v-toolbar color="rgba(0,0,0,0.8)" class="text-white">
-          <v-btn icon variant="text" @click="previewDialog = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-          <v-toolbar-title class="font-weight-bold">Playlist Preview - {{ props.playlist.name }}</v-toolbar-title>
-        </v-toolbar>
-        
-        <v-card-text class="pa-0 bg-black">
-          <v-carousel v-model="currentPreviewIndex" hide-delimiters show-arrows="hover" height="calc(100vh - 64px)">
-            <v-carousel-item v-for="(item, i) in playlistItems" :key="i">
-              <v-sheet height="100%" width="100%" color="transparent" class="d-flex flex-column align-center justify-center">
-                <v-icon size="120" :color="getIconColor(item.type)">{{ getIcon(item.type) }}</v-icon>
-                <h2 class="text-white mt-6">{{ item.name }}</h2>
-                <div class="d-flex align-center mt-4">
-                  <v-chip :color="getIconColor(item.type)" class="mr-3 text-uppercase font-weight-bold">{{ item.type }}</v-chip>
-                  <span class="text-medium-emphasis text-h6">Duration: {{ item.duration || '00:10' }}</span>
-                </div>
-              </v-sheet>
-            </v-carousel-item>
-          </v-carousel>
+    <!-- Preview Dialog (popup) -->
+    <v-dialog v-model="previewDialog" max-width="860" rounded="lg">
+      <v-card rounded="lg" elevation="8">
+        <div class="preview-dialog-header">
+          <div>
+            <div class="preview-dialog-title">Playlist Preview</div>
+            <div class="preview-dialog-sub">{{ props.playlist.name }}</div>
+          </div>
+          <button class="preview-close-btn" @click="previewDialog = false">✕</button>
+        </div>
+        <v-divider />
+        <div class="preview-dialog-body" style="position:relative">
+          <!-- Media display -->
+          <template v-if="playlistItems[currentPreviewIndex]">
+            <template v-if="playlistItems[currentPreviewIndex].url">
+              <video v-if="playlistItems[currentPreviewIndex].type === 'video'" controls autoplay
+                :src="playlistItems[currentPreviewIndex].url" class="preview-media-el" />
+              <img v-else-if="playlistItems[currentPreviewIndex].type === 'image'"
+                :src="playlistItems[currentPreviewIndex].url"
+                :alt="playlistItems[currentPreviewIndex].name" class="preview-media-el" />
+              <iframe v-else-if="playlistItems[currentPreviewIndex].type === 'html'"
+                :src="playlistItems[currentPreviewIndex].url" class="preview-media-el" style="border:none" />
+              <div v-else class="preview-empty" style="height:440px">
+                <v-icon size="64" :color="getIconColor(playlistItems[currentPreviewIndex].type)">{{ getIcon(playlistItems[currentPreviewIndex].type) }}</v-icon>
+                <p class="preview-empty-text">{{ playlistItems[currentPreviewIndex].name }}</p>
+              </div>
+            </template>
+            <div v-else class="preview-empty" style="height:440px">
+              <v-icon size="64" :color="getIconColor(playlistItems[currentPreviewIndex].type)">{{ getIcon(playlistItems[currentPreviewIndex].type) }}</v-icon>
+              <p class="preview-empty-text">{{ playlistItems[currentPreviewIndex].name }}</p>
+            </div>
+          </template>
+
+          <!-- Nav arrows (only if multiple items) -->
+          <template v-if="playlistItems.length > 1">
+            <button class="slider-nav slider-nav--prev" :disabled="currentPreviewIndex === 0"
+              @click="currentPreviewIndex--">&#8249;</button>
+            <button class="slider-nav slider-nav--next" :disabled="currentPreviewIndex === playlistItems.length - 1"
+              @click="currentPreviewIndex++">&#8250;</button>
+          </template>
+
+          <!-- Chips bar -->
+          <div class="preview-item-chips" v-if="playlistItems[currentPreviewIndex]">
+            <v-chip size="small" :color="getIconColor(playlistItems[currentPreviewIndex].type)" class="text-uppercase font-weight-bold">{{ playlistItems[currentPreviewIndex].type }}</v-chip>
+            <v-chip size="small" color="grey-darken-2">Duration: {{ playlistItems[currentPreviewIndex].duration || '00:10' }}</v-chip>
+            <span class="preview-counter">{{ currentPreviewIndex + 1 }} / {{ playlistItems.length }}</span>
+          </div>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <!-- Duplicate Media Warning -->
+    <v-dialog v-model="showDuplicateWarning" max-width="420" rounded="lg">
+      <v-card rounded="lg" elevation="8">
+        <div class="preview-dialog-header">
+          <div class="preview-dialog-title" style="color:#f59e0b">⚠ Duplicate Media</div>
+          <button class="preview-close-btn" @click="showDuplicateWarning = false">✕</button>
+        </div>
+        <v-divider />
+        <v-card-text class="pt-4 pb-2">
+          <p><strong>{{ duplicateMediaName }}</strong> is already in this playlist.</p>
+          <p class="text-medium-emphasis mt-1" style="font-size:0.85rem">It was added again. You can keep both or remove the duplicate.</p>
         </v-card-text>
+        <v-card-actions class="pa-4 pt-0 d-flex justify-end">
+          <v-btn variant="flat" color="warning" @click="showDuplicateWarning = false">OK, Keep Both</v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </div>
 </template>
 
 <style scoped>
+/* ── Preview popup ──────────────────── */
+.preview-dialog-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; padding: 1rem 1.25rem 0.875rem;
+}
+.preview-dialog-title { font-size: 1rem; font-weight: 700; color: #111; }
+.preview-dialog-sub { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+.preview-close-btn {
+  background: #f3f4f6; border: none; border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  color: #374151; flex-shrink: 0; font-size: 0.85rem;
+}
+.preview-close-btn:hover { background: #e5e7eb; }
+.preview-dialog-body { background: #111; }
+.preview-media-frame {
+  width: 100%; height: 440px; display: flex; align-items: center;
+  justify-content: center; background: #000;
+}
+.preview-media-el { width: 100%; height: 440px; object-fit: contain; background: #000; display: block; }
+.preview-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 440px; gap: 1rem;
+}
+.preview-empty-text { color: #9ca3af; font-size: 0.9rem; text-align: center; }
+.preview-item-chips { display: flex; gap: 6px; padding: 8px 12px; background: #1a1a1a; align-items: center; }
+.preview-counter { color: #9ca3af; font-size: 0.78rem; margin-left: auto; }
+.slider-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 50%;
+  width: 40px; height: 40px; font-size: 1.6rem; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s; z-index: 10;
+}
+.slider-nav:hover:not(:disabled) { background: rgba(0,0,0,0.85); }
+.slider-nav:disabled { opacity: 0.3; cursor: default; }
+.slider-nav--prev { left: 10px; }
+.slider-nav--next { right: 10px; }
+
 .builder-container {
   height: calc(100vh - 80px); /* Adjust to fit below app header */
   display: flex;
@@ -307,17 +409,58 @@ const publishPlaylist = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  background: white;
-  min-height: 64px;
-  border-bottom: 2px solid #f3f4f6;
+  padding: 12px 24px;
+  background: #fff;
+  min-height: 60px;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 12px;
+}
+
+.builder-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
+
+.hdr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.hdr-btn:disabled { opacity: 0.45; cursor: default; }
+
+.hdr-btn--back {
+  background: #f3f4f6;
+  color: #374151;
+}
+.hdr-btn--back:hover:not(:disabled) { background: #e5e7eb; }
+
+.hdr-btn--preview {
+  background: transparent;
+  color: #fdc704;
+  border: 1.5px solid #fdc704;
+}
+.hdr-btn--preview:hover:not(:disabled) { background: #fdf7d6; }
+
+.hdr-btn--publish {
+  background: #fdc704;
+  color: #fff;
+}
+.hdr-btn--publish:hover:not(:disabled) { background: #e6b400; }
 
 .builder-content {
   display: flex;
