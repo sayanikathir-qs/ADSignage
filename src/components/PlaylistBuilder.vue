@@ -71,7 +71,7 @@ const onPlaylistChange = (evt) => {
   }
 }
 
-const tabs = ['Media', 'Library', 'Canvas', 'Apps', 'Settings']
+const tabs = ['Media', 'Library', 'Apps', 'Settings']
 const activeTab = ref('Media')
 
 // Settings tab

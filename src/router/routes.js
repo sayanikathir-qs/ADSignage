@@ -32,11 +32,6 @@ export const routes = [
     meta: { title: 'Channel Builder' }
   },
   {
-    name: 'Canva',
-    path: '/canva',
-    component: () => import('../pages/Canva.vue')
-  },
-  {
     name: 'Applications',
     path: '/applications',
     component: () => import('../pages/Applications.vue')
@@ -48,7 +43,17 @@ export const routes = [
   },
   {
     name: 'Payments',
-    path: '/payments',
+    path: '/Payments',
     component: () => import('../pages/Payments.vue')
+  },
+  {
+    name: 'Subcriptions',
+    path: '/subcriptions',
+    component: () => import('../pages/Subcriptions.vue')
+  },
+  {
+    name: 'App downloads',
+    path: '/appdownloads',
+    component: () => import('../pages/Appdownloads.vue')
   },
 ];

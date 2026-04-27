@@ -27,11 +27,6 @@ export const menus = [
     icon: ImageIcon,
   },
   {
-    name:'Canva',
-    path:'/canva',
-    icon:ImageIcon,
-  },
-  {
     name:'Applications',
     path:'/applications',
     icon:ImageIcon,
@@ -44,6 +39,16 @@ export const menus = [
   {
     name:'Payments',
     path:'/Payments',
+    icon:ImageIcon,
+  },
+  {
+    name:'Subcriptions',
+    path:'/subcriptions',
+    icon:ImageIcon,
+  },
+  {
+    name:'App downloads',
+    path:'/appdownloads',
     icon:ImageIcon,
   }
 

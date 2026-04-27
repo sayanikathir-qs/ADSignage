@@ -73,3 +73,35 @@ export const liveActivity = [
   { text: 'TechStart Inc uploaded 4 new media files', time: '22 min ago' },
   { text: 'RetailHub screen "Outdoor South" went offline', time: '35 min ago' },
 ];
+
+export const invoices = [
+  { id: 'D3BFF31E-0001', term: 'month', amount: '£ 10', paidAt: '25/03/2024 18:21:51', period: '25/03/2024 - 25/04/2024' },
+  { id: 'D3BFF31E-0010', term: 'month', amount: '£ 10', paidAt: '25/04/2024 20:24:10', period: '25/04/2024 - 25/05/2024' },
+  { id: 'D3BFF31E-0017', term: 'month', amount: '£ 10', paidAt: '25/05/2024 20:22:17', period: '25/05/2024 - 25/06/2024' },
+  { id: 'D3BFF31E-0025', term: 'month', amount: '£ 5', paidAt: '30/12/2024 13:25:58', period: '30/12/2024 - 30/01/2025' },
+  { id: 'D3BFF31E-0027', term: 'month', amount: '£ 5', paidAt: '30/01/2025 14:26:52', period: '30/01/2025 - 28/02/2025' },
+  { id: 'D3BFF31E-0028', term: 'month', amount: '£ 5', paidAt: '28/02/2025 14:26:25', period: '28/02/2025 - 30/03/2025' },
+];
+
+export const subscriptions = [
+  {
+    id: 1,
+    startedAt: '30/12/2024 13:26:05',
+    amount: '£ 5',
+    term: 'monthly',
+    nextPayment: '30/03/2025 14:25:55',
+    lastPayment: '30/12/2024 13:25:55',
+    pairedTotal: '0 / 1',
+    status: 'Active'
+  },
+  {
+    id: 2,
+    startedAt: '25/03/2024 18:21:53',
+    amount: '£ 10',
+    term: 'monthly',
+    nextPayment: '25/06/2024 19:21:47',
+    lastPayment: '25/03/2024 18:21:47',
+    pairedTotal: '0 / 2',
+    status: 'Active'
+  }
+];
