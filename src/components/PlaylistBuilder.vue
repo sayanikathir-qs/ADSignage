@@ -74,6 +74,38 @@ const onPlaylistChange = (evt) => {
 const tabs = ['Media', 'Library', 'Canvas', 'Apps', 'Settings']
 const activeTab = ref('Media')
 
+// Settings tab
+const playlistColor = ref(props.playlist.color || '#ffc312')
+
+const saveSettings = async () => {
+  await playlistStore.updatePlaylist(props.playlist.id, {
+    color: playlistColor.value,
+    lastEdited: new Date().toLocaleString(),
+  })
+  toast.success('Settings saved successfully')
+}
+
+// Library: root-level folders as draggable items
+const libraryItems = computed(() => {
+  return mediaStore.folders.filter(f => !f.parentId)
+})
+
+// Canvas: media items of type 'canvas'
+const canvasItems = computed(() => {
+  return mediaStore.mediaItems.filter(m => m.type === 'canvas')
+})
+
+// Apps: media items of type 'youtube'
+const appItems = computed(() => {
+  return mediaStore.mediaItems.filter(m => m.type === 'youtube')
+})
+
+const getYoutubeId = (url) => {
+  if (!url) return ''
+  const match = url.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/ ]{11})/)
+  return match ? match[1] : ''
+}
+
 onMounted(async () => {
   await mediaStore.fetchMedia()
   await mediaStore.fetchFolders()
@@ -87,9 +119,8 @@ onMounted(async () => {
 
 // ✅ Watch for store changes (in case media is deleted/added elsewhere)
 watch(() => mediaStore.mediaItems, (newVal) => {
-  // Optional: Remove deleted items from playlist if needed
-  playlistItems.value = playlistItems.value.filter(item => 
-    newVal.find(media => media.id === item.id)
+  playlistItems.value = playlistItems.value.filter(item =>
+    item.type === 'folder' || newVal.find(media => media.id === item.id)
   )
 }, { deep: true })
 
@@ -99,6 +130,9 @@ const getIcon = (type) => {
     case 'image': return 'mdi-image'
     case 'html': return 'mdi-language-html5'
     case 'pdf': return 'mdi-file-pdf-box'
+    case 'canvas': return 'mdi-palette'
+    case 'youtube': return 'mdi-youtube'
+    case 'folder': return 'mdi-folder'
     default: return 'mdi-file'
   }
 }
@@ -109,6 +143,9 @@ const getIconColor = (type) => {
     case 'image': return 'teal'
     case 'html': return 'warning'
     case 'pdf': return 'error'
+    case 'canvas': return 'teal'
+    case 'youtube': return 'error'
+    case 'folder': return 'warning'
     default: return 'grey'
   }
 }
@@ -242,6 +279,118 @@ const publishPlaylist = async () => {
           <div v-if="currentFolders.length === 0 && currentMedia.length === 0" class="empty-folder text-center pa-4">
             <v-icon size="48" color="grey-lighten-2">mdi-folder-open-outline</v-icon>
             <p class="text-body-2 text-medium-emphasis mt-2">This folder is empty</p>
+          </div>
+        </div>
+
+        <!-- Library Tab -->
+        <div class="tab-content" v-else-if="activeTab === 'Library'">
+          <draggable
+            :list="libraryItems"
+            :group="{ name: 'media', pull: 'clone', put: false }"
+            item-key="id"
+            class="draggable-list"
+            :clone="(item) => ({ ...item, type: 'folder', uniqueId: Date.now() + Math.random(), duration: null })"
+          >
+            <template #item="{ element }">
+              <div class="media-list-item">
+                <div class="item-info">
+                  <span class="item-name">{{ element.name }}</span>
+                  <div class="item-meta mt-1">
+                    <span class="badge" style="background:#ec4899">image</span>
+                    <span class="text-caption text-medium-emphasis ml-2">
+                      {{ element.createdAt ? new Date(element.createdAt).toLocaleString() : '' }}
+                    </span>
+                  </div>
+                </div>
+                <v-icon color="#fdc704" size="32">mdi-folder</v-icon>
+              </div>
+            </template>
+          </draggable>
+          <div v-if="libraryItems.length === 0" class="empty-folder text-center pa-4">
+            <v-icon size="48" color="grey-lighten-2">mdi-folder-open-outline</v-icon>
+            <p class="text-body-2 text-medium-emphasis mt-2">No library folders found</p>
+          </div>
+        </div>
+
+        <!-- Canvas Tab -->
+        <div class="tab-content" v-else-if="activeTab === 'Canvas'">
+          <draggable
+            :list="canvasItems"
+            :group="{ name: 'media', pull: 'clone', put: false }"
+            item-key="id"
+            class="draggable-list"
+            :clone="(item) => ({ ...item, uniqueId: Date.now() + Math.random() })"
+          >
+            <template #item="{ element }">
+              <div class="media-list-item">
+                <div class="item-info">
+                  <span class="item-name canvas-item-name">{{ element.name }}</span>
+                  <div class="item-meta mt-1">
+                    <span class="badge" style="background:#ec4899">{{ element.type }}</span>
+                    <span class="text-caption text-medium-emphasis ml-2">{{ element.date }}</span>
+                  </div>
+                </div>
+                <img v-if="element.url" :src="element.url" class="item-thumbnail" :alt="element.name" />
+                <v-icon v-else color="teal">mdi-palette</v-icon>
+              </div>
+            </template>
+          </draggable>
+          <div v-if="canvasItems.length === 0" class="empty-folder text-center pa-4">
+            <v-icon size="48" color="grey-lighten-2">mdi-palette-outline</v-icon>
+            <p class="text-body-2 text-medium-emphasis mt-2">No canvas designs found</p>
+          </div>
+        </div>
+
+        <!-- Apps Tab -->
+        <div class="tab-content" v-else-if="activeTab === 'Apps'">
+          <draggable
+            :list="appItems"
+            :group="{ name: 'media', pull: 'clone', put: false }"
+            item-key="id"
+            class="draggable-list"
+            :clone="(item) => ({ ...item, uniqueId: Date.now() + Math.random() })"
+          >
+            <template #item="{ element }">
+              <div class="media-list-item">
+                <div class="item-info">
+                  <span class="item-name">{{ element.name }}</span>
+                  <div class="item-meta mt-1">
+                    <span class="badge" style="background:#3b82f6">Youtube</span>
+                    <span class="text-caption text-medium-emphasis ml-2">{{ element.date }}</span>
+                  </div>
+                </div>
+                <img v-if="element.thumbnail" :src="element.thumbnail" class="item-thumbnail" :alt="element.name" />
+                <img v-else-if="getYoutubeId(element.url)"
+                  :src="`https://img.youtube.com/vi/${getYoutubeId(element.url)}/default.jpg`"
+                  class="item-thumbnail" :alt="element.name" />
+                <v-icon v-else color="red">mdi-youtube</v-icon>
+              </div>
+            </template>
+          </draggable>
+          <div v-if="appItems.length === 0" class="empty-folder text-center pa-4">
+            <v-icon size="48" color="grey-lighten-2">mdi-apps</v-icon>
+            <p class="text-body-2 text-medium-emphasis mt-2">No apps found</p>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-content" v-else-if="activeTab === 'Settings'">
+          <div class="settings-section">
+            <div class="settings-row">
+              <label class="settings-label">Change Color</label>
+              <div class="color-input-wrapper">
+                <input type="text" v-model="playlistColor" class="color-text-input" />
+                <input type="color" v-model="playlistColor" class="color-swatch" />
+              </div>
+            </div>
+            <button class="save-settings-btn" @click="saveSettings">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              Save Settings
+            </button>
           </div>
         </div>
       </div>
@@ -610,4 +759,85 @@ const publishPlaylist = async () => {
 .drag-handle {
   cursor: grab;
 }
+
+.item-thumbnail {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.canvas-item-name {
+  color: #1e40af;
+}
+
+/* Settings tab */
+.settings-section {
+  padding: 16px 0;
+  max-width: 480px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.settings-label {
+  font-size: 0.9rem;
+  color: #374151;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.color-input-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.color-text-input {
+  flex: 1;
+  border: none;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  outline: none;
+  background: transparent;
+}
+
+.color-swatch {
+  width: 48px;
+  height: 42px;
+  border: none;
+  border-left: 1px solid #e5e7eb;
+  cursor: pointer;
+  padding: 2px;
+  background: white;
+}
+
+.save-settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 20px;
+  background: #fdc704;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-settings-btn:hover { background: #e6b400; }
 </style>

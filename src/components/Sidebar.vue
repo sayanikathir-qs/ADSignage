@@ -1,35 +1,25 @@
 <script setup>
-import { LayoutDashboard, Monitor, Layers, PlaySquare, Image as ImageIcon } from 'lucide-vue-next'
+import { menus } from '@/router/menus'
 </script>
 
 <template>
   <aside class="sidebar">
     <div class="logo-container">
       <div class="logo">
-        <span class="logo-icon">A</span>
+        <span class="logo-icon">AD</span>
         <span class="logo-text">ADSignage</span>
       </div>
     </div>
     <nav class="nav-menu">
-      <router-link to="/" class="nav-item" exact-active-class="active">
-        <LayoutDashboard :size="20" />
-        <span>Dashboard</span>
-      </router-link>
-      <router-link to="/screens" class="nav-item" exact-active-class="active">
-        <Monitor :size="20" />
-        <span>Screens</span>
-      </router-link>
-      <router-link to="/channels" class="nav-item" exact-active-class="active">
-        <Layers :size="20" />
-        <span>Channels</span>
-      </router-link>
-      <router-link to="/playlists" class="nav-item" exact-active-class="active">
-        <PlaySquare :size="20" />
-        <span>Playlists</span>
-      </router-link>
-      <router-link to="/media" class="nav-item" exact-active-class="active">
-        <ImageIcon :size="20" />
-        <span>Media</span>
+      <router-link
+        v-for="menu in menus"
+        :key="menu.path"
+        :to="menu.path"
+        class="nav-item"
+        exact-active-class="active"
+      >
+        <component :is="menu.icon" :size="20" />
+        <span>{{ menu.name }}</span>
       </router-link>
     </nav>
   </aside>

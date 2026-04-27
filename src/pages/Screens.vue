@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useScreensStore } from '@/stores/screen'
 import { useChannelsStore } from '@/stores/channel'
 import { usePlaylistStore } from '@/stores/playlist'
+import { toast } from 'vue3-toastify'
 import {
   Monitor,
   Search,
@@ -208,6 +209,27 @@ const handleSetContent = async () => {
   showSetContent.value = false
 }
 
+// ── Rename Screen Dialog ───────────────────────────
+const showRenameScreen = ref(false)
+const renamingScreen = ref(null)
+const renameData = ref({ name: '', type: 'Web' })
+
+const openRenameDialog = (screen) => {
+  renamingScreen.value = screen
+  renameData.value = { name: screen.name, type: screen.type || 'Web' }
+  showRenameScreen.value = true
+}
+
+const handleRenameScreen = async () => {
+  if (!renamingScreen.value || !renameData.value.name.trim()) return
+  await screensStore.updateScreen(renamingScreen.value.id, {
+    name: renameData.value.name.trim(),
+    type: renameData.value.type,
+  })
+  showRenameScreen.value = false
+  toast.success('Screen updated successfully')
+}
+
 // ── Screen context menu actions ────────────────────
 const handleMenuAction = async (action, screenId) => {
   if (action === 'delete') {
@@ -215,10 +237,15 @@ const handleMenuAction = async (action, screenId) => {
   }
   if (action === 'removeChannel') {
     await screensStore.updateScreenChannel(screenId, null)
+    toast.success('Channel removed from screen')
   }
   if (action === 'setContent') {
     const screen = localScreens.value.find(s => s.id === screenId)
     if (screen) openSetContentDialog(screen)
+  }
+  if (action === 'rename') {
+    const screen = localScreens.value.find(s => s.id === screenId)
+    if (screen) openRenameDialog(screen)
   }
 }
 
@@ -259,7 +286,7 @@ const menuItems = [
   { action: 'delete', icon: Trash2, label: 'Delete', danger: true },
 ]
 
-const screenTypes = ['Web', 'Android', 'Samsung', 'LG', 'Raspberry Pi', 'Windows']
+const screenTypes = ['Web', 'Samsung', 'Android', 'Ubuntu', 'Amazon', 'LG']
 const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 </script>
 
@@ -457,6 +484,43 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
       </div>
     </div>
   </div>
+
+  <!-- ── Rename Screen Dialog ─────────────────────── -->
+  <v-dialog v-model="showRenameScreen" max-width="500" rounded="lg">
+    <div class="dialog-box">
+      <div class="dialog-head">
+        <h3>Rename Screen</h3>
+        <button class="dlg-close" @click="showRenameScreen = false"><X :size="20" /></button>
+      </div>
+      <div class="dialog-body">
+        <div class="form-group">
+          <label>New Screen Name: *</label>
+          <input
+            v-model="renameData.name"
+            type="text"
+            class="form-input"
+            placeholder="Enter screen name"
+            @keyup.enter="handleRenameScreen"
+          />
+        </div>
+        <div class="form-group">
+          <label>Screen Type*</label>
+          <v-select
+            v-model="renameData.type"
+            :items="screenTypes"
+            variant="outlined"
+            density="comfortable"
+            color="#fdc704"
+            hide-details
+          />
+        </div>
+      </div>
+      <div class="dialog-foot" style="gap: 0.75rem">
+        <button class="btn-dlg-cancel" @click="showRenameScreen = false">Cancel</button>
+        <button class="btn-dlg-primary" @click="handleRenameScreen">Rename Screen</button>
+      </div>
+    </div>
+  </v-dialog>
 
   <!-- ── Create New Screen Dialog ──────────────────── -->
   <v-dialog v-model="showNewScreen" max-width="500" rounded="lg">
@@ -1252,7 +1316,7 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
 .dialog-foot {
   padding: 1.25rem 1.5rem;
   border-top: 1px solid #f3f4f6;
-  display: flex; justify-content: flex-end;
+  display: flex; justify-content: flex-end; gap: 0.5rem;
 }
 
 .btn-dlg-primary {
@@ -1266,6 +1330,15 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
   background: #d1d5db;
   cursor: not-allowed;
 }
+
+.btn-dlg-cancel {
+  background: white; color: #374151;
+  border: 1.5px solid #e5e7eb;
+  padding: 0.75rem 1.5rem; border-radius: 10px;
+  font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-dlg-cancel:hover { background: #f3f4f6; border-color: #d1d5db; }
 
 .text-center { text-align: center; }
 .mb-4 { margin-bottom: 1rem; }

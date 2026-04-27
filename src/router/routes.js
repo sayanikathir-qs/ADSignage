@@ -30,5 +30,25 @@ export const routes = [
     component: () => import('../components/common/ChannelBuilder.vue'),
     props: true,
     meta: { title: 'Channel Builder' }
-  }
+  },
+  {
+    name: 'Canva',
+    path: '/canva',
+    component: () => import('../pages/Canva.vue')
+  },
+  {
+    name: 'Applications',
+    path: '/applications',
+    component: () => import('../pages/Applications.vue')
+  },
+  {
+    name: 'Videoconvert',
+    path: '/videoconvert',
+    component: () => import('../pages/Videoconvert.vue')
+  },
+  {
+    name: 'Payments',
+    path: '/payments',
+    component: () => import('../pages/Payments.vue')
+  },
 ];

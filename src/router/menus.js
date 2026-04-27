@@ -25,5 +25,27 @@ export const menus = [
     name: 'Media',
     path: '/media',
     icon: ImageIcon,
+  },
+  {
+    name:'Canva',
+    path:'/canva',
+    icon:ImageIcon,
+  },
+  {
+    name:'Applications',
+    path:'/applications',
+    icon:ImageIcon,
+  },
+  {
+    name:'Videoconvert',
+    path:'/videoconvert',
+    icon:ImageIcon,
+  },
+  {
+    name:'Payments',
+    path:'/Payments',
+    icon:ImageIcon,
   }
+
+
 ];
