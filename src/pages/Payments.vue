@@ -110,8 +110,9 @@
 import { ref, computed } from 'vue'
 
 // ── Replace these with your actual Stripe Payment Link URLs ──────────────
-const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/your-monthly-link'
-const STRIPE_YEARLY_LINK  = 'https://buy.stripe.com/your-yearly-link'
+const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/test_8x23cx55DbuegiTbfn6Ri00';
+const STRIPE_YEARLY_LINK = 'https://buy.stripe.com/test_8x23cx55DbuegiTbfn6Ri00';
+
 
 
 // Reactive state

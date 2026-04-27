@@ -311,36 +311,6 @@ const publishPlaylist = async () => {
             <p class="text-body-2 text-medium-emphasis mt-2">No library folders found</p>
           </div>
         </div>
-
-        <!-- Canvas Tab -->
-        <div class="tab-content" v-else-if="activeTab === 'Canvas'">
-          <draggable
-            :list="canvasItems"
-            :group="{ name: 'media', pull: 'clone', put: false }"
-            item-key="id"
-            class="draggable-list"
-            :clone="(item) => ({ ...item, uniqueId: Date.now() + Math.random() })"
-          >
-            <template #item="{ element }">
-              <div class="media-list-item">
-                <div class="item-info">
-                  <span class="item-name canvas-item-name">{{ element.name }}</span>
-                  <div class="item-meta mt-1">
-                    <span class="badge" style="background:#ec4899">{{ element.type }}</span>
-                    <span class="text-caption text-medium-emphasis ml-2">{{ element.date }}</span>
-                  </div>
-                </div>
-                <img v-if="element.url" :src="element.url" class="item-thumbnail" :alt="element.name" />
-                <v-icon v-else color="teal">mdi-palette</v-icon>
-              </div>
-            </template>
-          </draggable>
-          <div v-if="canvasItems.length === 0" class="empty-folder text-center pa-4">
-            <v-icon size="48" color="grey-lighten-2">mdi-palette-outline</v-icon>
-            <p class="text-body-2 text-medium-emphasis mt-2">No canvas designs found</p>
-          </div>
-        </div>
-
         <!-- Apps Tab -->
         <div class="tab-content" v-else-if="activeTab === 'Apps'">
           <draggable

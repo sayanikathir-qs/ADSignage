@@ -47,7 +47,7 @@
                 <td>{{ sub.pairedTotal }}</td>
                 <td><span class="status-badge active">{{ sub.status }}</span></td>
                 <td>
-                  <button class="action-btn delete" title="Delete">
+                  <button class="action-btn delete" @click="openDeleteDialog(sub)" title="Delete">
                     <span>🗑️</span>
                   </button>
                 </td>
@@ -108,7 +108,7 @@
                 <td>{{ inv.paidAt }}</td>
                 <td>{{ inv.period }}</td>
                 <td>
-                  <button class="action-btn download" title="Download">
+                  <button class="action-btn download" @click.stop ="handleDownload(inv)" title="Download">
                     <span class="download-icon">⬇</span>
                   </button>
                 </td>
@@ -133,6 +133,21 @@
       </section>
 
     </main>
+
+        <!-- Delete Confirmation Dialog -->
+    <ConfirmationDialog
+      v-model="deleteDialog.open"
+      title="Delete Media"
+      :message="`Are you sure you want to delete '${deleteDialog.item?.name}'?`"
+      detail="This action cannot be undone."
+      icon="mdi-delete-alert"
+      icon-color="error"
+      confirm-text="Delete"
+      confirm-color="error"
+      cancel-text="Cancel"
+      :loading="deleteDialog.loading"
+      @confirm="handleConfirmDelete"
+    />
   </div>
 </template>
 
@@ -141,9 +156,20 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue3-toastify'
 import { invoices, subscriptions } from '../data/mockData'
+import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
+
+const deleteDialog = ref({
+  open: false,
+  item: null,
+  loading: false
+})
+const openDeleteDialog = (sub) => {
+  deleteDialog.value.item = sub
+  deleteDialog.value.open = true
+}
 
 onMounted(() => {
   if (route.query.payment === 'success') {
@@ -174,6 +200,46 @@ const filteredInvoices = computed(() => {
     Object.values(inv).some(val => String(val).toLowerCase().includes(q))
   )
 })
+
+const handleDownload = (inv) => {
+  if (!inv) return;
+  const blob = new Blob([`Invoice :` + inv.name + "Term :" + inv.term + "Amount:" + inv.amount + "Paid At:" + inv.paidAt + "Period:" + inv.period], { type: "text/plain" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = inv.name + "_" + inv.term + ".txt"
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+};
+
+
+const handleConfirmDelete = async () => {
+  if (!deleteDialog.value.item) return
+
+  deleteDialog.value.loading = true
+
+  try {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 800))
+
+    // Remove item from array
+    const index = filteredSubscriptions.value.findIndex(s => s.id === deleteDialog.value.item.id)
+    if (index !== -1) {
+      filteredSubscriptions.value.splice(index, 1)
+    }
+
+    toast.success(`'${deleteDialog.value.item.name}' has been deleted.`)
+    deleteDialog.value.open = false
+    deleteDialog.value.item = null
+  } catch (error) {
+    console.error('Delete error:', error)
+    toast.error('Failed to delete media')
+  } finally {
+    deleteDialog.value.loading = false
+  }
+}
 </script>
 
 <style scoped>
