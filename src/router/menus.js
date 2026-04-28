@@ -42,7 +42,7 @@ export const menus = [
     icon:CreditCard,
   },
   {
-    name:'Subcriptions',
+    name:'Subscriptions',
     path:'/subcriptions',
     icon:Repeat,
   },

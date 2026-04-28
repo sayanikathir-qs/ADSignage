@@ -104,12 +104,21 @@ const platforms = [
 ]
 
 const handleDownload = (p) => {
-  selectedPlatform.value  = p.name
-  showNotification.value  = true
+  selectedPlatform.value = p.name
+  showNotification.value = true
+
+  // Create temporary anchor element
+  const link = document.createElement('a')
+  link.href = p.downloadUrl
+  link.download = '' // Optional: specify filename like `link.download = 'setup.exe'`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+
+  // Hide notification after download starts
   setTimeout(() => {
-    window.location.href   = p.downloadUrl
     showNotification.value = false
-  }, 800)
+  }, 1500)
 }
 </script>
 

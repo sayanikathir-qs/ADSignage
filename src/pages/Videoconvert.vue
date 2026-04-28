@@ -69,10 +69,15 @@
             <td>{{ item.status }}</td>
             <td>{{ item.convertedAt }}</td>
             <td>
-              <button class="download-btn" @click="handleDownload(item)">
+              <button
+                v-if="itemsWithFiles.has(item.id)"
+                class="download-btn"
+                @click="handleDownload(item)"
+              >
                 <v-icon size="14">mdi-download</v-icon>
                 Download
               </button>
+              <span v-else class="no-file-label">—</span>
             </td>
           </tr>
         </tbody>
@@ -110,22 +115,99 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import VideoConvertUploadDialog from '@/components/dialogs/VideoConvertUploadDialog.vue';
 
+// ── IndexedDB helpers ────────────────────────────────────────────────────────
+const IDB_NAME  = 'adsignage-vc';
+const IDB_STORE = 'video-files';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = (e) => e.target.result.createObjectStore(IDB_STORE);
+    req.onsuccess  = (e) => resolve(e.target.result);
+    req.onerror    = (e) => reject(e.target.error);
+  });
+}
+
+async function idbPut(id, file) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(file, id);
+    tx.oncomplete = resolve;
+    tx.onerror    = (e) => reject(e.target.error);
+  });
+}
+
+async function idbGet(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(id);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror   = (e) => reject(e.target.error);
+  });
+}
+
+async function idbDelete(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror    = (e) => reject(e.target.error);
+  });
+}
+
+// ── Persist item list in localStorage ───────────────────────────────────────
+const LS_KEY = 'vc-items';
+
+// const MOCK_ITEMS = [
+//   { id: 1, name: '20offerADscreen_converted.mp4',    status: 'Completed', convertedAt: 'Thu, Sep 26, 2024 5:38 AM', _ts: 1727327880000 },
+//   { id: 2, name: '20% offer AD screen_converted.mp4', status: 'Completed', convertedAt: 'Thu, Sep 26, 2024 5:28 AM', _ts: 1727327280000 },
+//   { id: 3, name: '20% offer AD screen_converted.mp4', status: 'Completed', convertedAt: 'Thu, Sep 26, 2024 5:18 AM', _ts: 1727326680000 },
+// ];
+
+function loadItems() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : MOCK_ITEMS;
+  } catch {
+    return MOCK_ITEMS;
+  }
+}
+
+function saveItems(list) {
+  localStorage.setItem(LS_KEY, JSON.stringify(list));
+}
+
+// ── Reactive state ───────────────────────────────────────────────────────────
 const uploadDialogOpen = ref(false);
-const searchQuery = ref('');
-const perPage = ref(10);
-const currentPage = ref(1);
-const sortKey = ref('convertedAt');
-const sortDir = ref('desc');
+const searchQuery      = ref('');
+const perPage          = ref(10);
+const currentPage      = ref(1);
+const sortKey          = ref('convertedAt');
+const sortDir          = ref('desc');
 
-const items = ref([
-  { id: 1, name: '20offerADscreen_converted.mp4', status: 'Completed', convertedAt: 'Thu, Sep 26, 2024 5:38 AM', _ts: 1727327880000 },
-  { id: 2, name: '20% offer AD screen_converted.mp4', status: 'Completed', convertedAt: 'Thu, Sep 26, 2024 5:28 AM', _ts: 1727327280000 },
-  { id: 3, name: '20% offer AD screen_converted.mp4', status: 'Completed', convertedAt: 'Thu, Sep 26, 2024 5:18 AM', _ts: 1727326680000 },
-]);
+const items           = ref(loadItems());
+const itemsWithFiles  = ref(new Set()); // IDs that have a real file in IndexedDB
 
+// Persist metadata to localStorage whenever items change
+watch(items, (val) => saveItems(val), { deep: true });
+
+// On mount, check which items have a real file stored in IndexedDB
+onMounted(async () => {
+  const ids = new Set();
+  for (const item of items.value) {
+    const file = await idbGet(item.id);
+    if (file) ids.add(item.id);
+  }
+  itemsWithFiles.value = ids;
+});
+
+// ── Computed ─────────────────────────────────────────────────────────────────
 const filteredItems = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
   let list = q
@@ -137,14 +219,12 @@ const filteredItems = computed(() => {
     : [...items.value];
 
   list.sort((a, b) => {
-    let va = a[sortKey.value] ?? '';
-    let vb = b[sortKey.value] ?? '';
-    if (sortKey.value === 'convertedAt') { va = a._ts; vb = b._ts; }
+    let va = sortKey.value === 'convertedAt' ? a._ts  : (a[sortKey.value] ?? '');
+    let vb = sortKey.value === 'convertedAt' ? b._ts  : (b[sortKey.value] ?? '');
     if (va < vb) return sortDir.value === 'asc' ? -1 : 1;
-    if (va > vb) return sortDir.value === 'asc' ? 1 : -1;
+    if (va > vb) return sortDir.value === 'asc' ?  1 : -1;
     return 0;
   });
-
   return list;
 });
 
@@ -163,32 +243,45 @@ const visiblePages = computed(() => {
 
 watch([searchQuery, perPage], () => { currentPage.value = 1; });
 
+// ── Actions ───────────────────────────────────────────────────────────────────
 const setSort = (key) => {
-  if (sortKey.value === key) {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc';
-  } else {
-    sortKey.value = key;
-    sortDir.value = 'asc';
-  }
+  sortDir.value = sortKey.value === key && sortDir.value === 'asc' ? 'desc' : 'asc';
+  sortKey.value = key;
 };
 
-let nextId = 4;
-const handleUploadSubmit = ({ name }) => {
+const nextId = () => {
+  const max = items.value.reduce((m, i) => Math.max(m, i.id), 0);
+  return max + 1;
+};
+
+const handleUploadSubmit = async ({ file, name }) => {
+  const id  = nextId();
   const now = new Date();
   const label = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
     + ' ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  items.value.unshift({ id: nextId++, name, status: 'Completed', convertedAt: label, _ts: now.getTime() });
+
+  // Save the real file binary in IndexedDB so it survives page refreshes
+  if (file) {
+    await idbPut(id, file);
+    itemsWithFiles.value = new Set([...itemsWithFiles.value, id]);
+  }
+
+  items.value.unshift({ id, name, status: 'Completed', convertedAt: label, _ts: now.getTime() });
 };
 
-const handleDownload = (item) => {
-  const blob = new Blob([`Converted video: ${item.name}`], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
+const handleDownload = async (item) => {
+  // Retrieve the real file from IndexedDB
+  const file = await idbGet(item.id);
+  if (!file) return;
+
+  const url = URL.createObjectURL(file);
+  const a   = document.createElement('a');
+  a.href    = url;
   a.download = item.name;
   document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  // Revoke after a short delay to allow the download to start
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
   document.body.removeChild(a);
 };
 </script>
@@ -362,6 +455,8 @@ const handleDownload = (item) => {
   transition: color 0.15s;
 }
 .download-btn:hover { color: #fdc704; }
+
+.no-file-label { color: #d1d5db; font-size: 13px; }
 
 /* Table footer */
 .table-footer {
