@@ -1,4 +1,4 @@
-import { LayoutDashboard, Monitor, Layers, PlaySquare, Image as ImageIcon } from 'lucide-vue-next'
+import { LayoutDashboard, Monitor,Download,AppWindow,RotateCcw,Layers, CreditCard ,PlaySquare, Repeat ,Image as ImageIcon, Grid } from 'lucide-vue-next'
 
 export const menus = [
   {
@@ -29,27 +29,27 @@ export const menus = [
   {
     name:'Applications',
     path:'/applications',
-    icon:ImageIcon,
+    icon:Grid,
   },
   {
     name:'Videoconvert',
     path:'/videoconvert',
-    icon:ImageIcon,
+    icon:RotateCcw,
   },
   {
     name:'Payments',
     path:'/Payments',
-    icon:ImageIcon,
+    icon:CreditCard,
   },
   {
     name:'Subcriptions',
     path:'/subcriptions',
-    icon:ImageIcon,
+    icon:Repeat,
   },
   {
     name:'App downloads',
     path:'/appdownloads',
-    icon:ImageIcon,
+    icon:Download,
   }
 
 

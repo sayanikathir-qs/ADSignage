@@ -1,10 +1,19 @@
 <script setup>
-import { Menu, Plus } from 'lucide-vue-next'
+import { Menu } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { APP_TYPES } from '@/stores/applications'
 
 const route = useRoute()
-const pageTitle = computed(() => route.name)
+
+const pageTitle = computed(() => {
+  if (route.name === 'ApplicationDetail') {
+    const meta = APP_TYPES.find(a => a.type === route.params.appType)
+    const label = meta?.name ?? route.params.appType
+    return `Applications - ${label}`
+  }
+  return route.meta?.title || route.name
+})
 </script>
 
 <template>

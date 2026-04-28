@@ -37,6 +37,12 @@ export const routes = [
     component: () => import('../pages/Applications.vue')
   },
   {
+    name: 'ApplicationDetail',
+    path: '/applications/:appType',
+    component: () => import('../pages/ApplicationDetail.vue'),
+    props: true,
+  },
+  {
     name: 'Videoconvert',
     path: '/videoconvert',
     component: () => import('../pages/Videoconvert.vue')
@@ -54,6 +60,7 @@ export const routes = [
   {
     name: 'App downloads',
     path: '/appdownloads',
-    component: () => import('../pages/Appdownloads.vue')
+    component: () => import('../pages/Appdownloads.vue'),
+    meta: { title: 'Downloads' }
   },
 ];
