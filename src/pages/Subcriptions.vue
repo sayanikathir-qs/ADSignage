@@ -245,7 +245,6 @@ const handleConfirmDelete = async () => {
 <style scoped>
 /* General Layout */
 .page-container {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f4f6f9;
   min-height: 100vh;
   color: #333;

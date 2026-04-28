@@ -158,7 +158,6 @@ const handlePurchase = () => {
   min-height: 100vh;
   background-color: #f5f7fa;
   padding: 40px 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
 .payment-card {
