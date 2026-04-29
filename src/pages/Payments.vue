@@ -86,7 +86,7 @@
               <span>£{{ totalPrice.toFixed(2) }}</span>
             </div>
             <div class="summary-row total">
-              <span>Ttotal</span>
+              <span>Total</span>
               <span>£{{ totalPrice.toFixed(2) }}</span>
             </div>
           </div>
@@ -108,10 +108,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { toast } from 'vue3-toastify'
+import { useSubscriptionStore } from '@/stores/subscription'
 
-// ── Replace these with your actual Stripe Payment Link URLs ──────────────
-const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/test_8x23cx55DbuegiTbfn6Ri00';
-const STRIPE_YEARLY_LINK = 'https://buy.stripe.com/test_8x23cx55DbuegiTbfn6Ri00';
+const subscriptionStore = useSubscriptionStore()
+
+const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/test_8x23cx55DbuegiTbfn6Ri00'
+const STRIPE_YEARLY_LINK = 'https://buy.stripe.com/test_fZueVfcy555QaYzbfn6Ri01'
 
 
 
@@ -141,15 +144,53 @@ const nextBillingDate = computed(() => {
   })
 })
 
-const handlePurchase = () => {
-  const baseUrl = billingFrequency.value === 'monthly'
-    ? STRIPE_MONTHLY_LINK
-    : STRIPE_YEARLY_LINK
+const handlePurchase = async () => {
+  console.log('🛒 [Payment.vue] Buy Now clicked')
+  
+  // 1️⃣ Save pending data
+  try {
+    const pendingData = {
+      billingFrequency: billingFrequency.value,
+      screenLicenses: screenLicenses.value,
+      totalPrice: totalPrice.value
+    }
+    
+    console.log('📝 Saving pending data:', pendingData)
+    subscriptionStore.setPendingSubscription(pendingData)
+    
+    // 2️⃣ WAIT and VERIFY it was saved
+    await new Promise(resolve => setTimeout(resolve, 500)) // Wait 500ms
+    
+    const saved = localStorage.getItem('mock_pending_subscription')
+    console.log('🔍 Verification after delay:', saved ? '✅ Saved' : '❌ Failed')
+    
+    if (!saved) {
+      console.error('❌ CRITICAL: localStorage is empty!')
+      toast.error('Failed to save subscription data. Please try again.')
+      return
+    }
+    
+    console.log('✅ Data saved successfully, redirecting to Stripe...')
+    
+  } catch (err) {
+    console.error('❌ Error saving pending data:', err)
+    toast.error('Failed to prepare subscription. Please try again.')
+    return
+  }
 
-  // Pass quantity so Stripe pre-fills the number of screen licenses
-  const checkoutUrl = `${baseUrl}?prefilled_quantity=${screenLicenses.value}&success_url=${encodeURIComponent(window.location.origin + '/subcriptions?payment=success')}&cancel_url=${encodeURIComponent(window.location.origin + '/Payments')}`
-
-  window.location.href = checkoutUrl
+  // 3️⃣ Redirect to Stripe
+  const successUrl = `${window.location.origin}/subscriptions?payment=success`
+  const cancelUrl = `${window.location.origin}/Payments`
+  
+  const stripeLink = billingFrequency.value === 'yearly' ? STRIPE_YEARLY_LINK : STRIPE_MONTHLY_LINK
+  const checkoutUrl = `${stripeLink}?prefilled_quantity=${screenLicenses.value}`
+  
+  console.log('🔗 Redirecting to:', checkoutUrl)
+  
+  // Small delay to ensure localStorage write completes
+  setTimeout(() => {
+    window.location.href = checkoutUrl
+  }, 200)
 }
 </script>
 

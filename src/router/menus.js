@@ -43,7 +43,7 @@ export const menus = [
   },
   {
     name:'Subscriptions',
-    path:'/subcriptions',
+    path:'/subscriptions',
     icon:Repeat,
   },
   {

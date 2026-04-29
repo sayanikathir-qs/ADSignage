@@ -53,9 +53,9 @@ export const routes = [
     component: () => import('../pages/Payments.vue')
   },
   {
-    name: 'Subcriptions',
-    path: '/subcriptions',
-    component: () => import('../pages/Subcriptions.vue')
+    name: 'Subscriptions',
+    path: '/subscriptions',
+    component: () => import('../pages/Subscriptions.vue')
   },
   {
     name: 'App downloads',
