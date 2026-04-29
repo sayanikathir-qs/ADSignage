@@ -1,10 +1,18 @@
 <script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Menu } from 'lucide-vue-next'
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { toast } from 'vue3-toastify'
 import { APP_TYPES } from '@/stores/applications'
+import { useAuthStore } from '@/stores/auth'
+import ProfileDialog from './dialogs/ProfileDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+const dropdownOpen = ref(false)
+const profileDialogOpen = ref(false)
 
 const pageTitle = computed(() => {
   if (route.name === 'ApplicationDetail') {
@@ -14,6 +22,34 @@ const pageTitle = computed(() => {
   }
   return route.meta?.title || route.name
 })
+
+const toggleDropdown = () => { dropdownOpen.value = !dropdownOpen.value }
+
+const openProfile = () => {
+  dropdownOpen.value = false
+  profileDialogOpen.value = true
+}
+
+const goToSubscriptions = () => {
+  dropdownOpen.value = false
+  router.push('/subscriptions')
+}
+
+const handleLogout = () => {
+  dropdownOpen.value = false
+  authStore.logout()
+  toast.success('Logged out successfully')
+  router.push('/login')
+}
+
+// Close dropdown when clicking outside
+const onClickOutside = (e) => {
+  const el = document.getElementById('user-dropdown-wrapper')
+  if (el && !el.contains(e.target)) dropdownOpen.value = false
+}
+
+onMounted(() => document.addEventListener('click', onClickOutside))
+onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 </script>
 
 <template>
@@ -24,13 +60,37 @@ const pageTitle = computed(() => {
       </button>
       <h1 class="page-title">{{ pageTitle }}</h1>
     </div>
-    
+
     <div class="header-right">
-      <div class="user-profile">
-        <img src="/home/sayani/Pictures/user.png" alt="User" class="avatar" />
+      <div id="user-dropdown-wrapper" class="user-dropdown-wrapper">
+        <button class="user-profile" @click.stop="toggleDropdown">
+          <img src="/home/sayani/Pictures/user.png" alt="User" class="avatar"
+            onerror="this.style.display='none'" />
+        </button>
+
+        <!-- Dropdown menu -->
+        <transition name="dropdown">
+          <div v-if="dropdownOpen" class="dropdown-menu">
+            <button class="dropdown-item" @click="openProfile">
+              <span class="item-icon">👤</span>
+              Profile
+            </button>
+            <button class="dropdown-item" @click="goToSubscriptions">
+              <span class="item-icon">✉️</span>
+              Subscriptions
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item logout" @click="handleLogout">
+              <span class="item-icon">↪</span>
+              Logout
+            </button>
+          </div>
+        </transition>
       </div>
     </div>
   </header>
+
+  <ProfileDialog v-model="profileDialogOpen" />
 </template>
 
 <style scoped>
@@ -44,7 +104,7 @@ const pageTitle = computed(() => {
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 100;
 }
 
 .header-left {
@@ -73,36 +133,94 @@ const pageTitle = computed(() => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
 }
 
-.action-btn {
-  background-color: #fdc704;
-  color: #fff;
-  border: none;
-  padding: 0.6rem 1.25rem;
-  border-radius: 6px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.action-btn:hover {
-  background-color: #0d9488;
+/* Dropdown wrapper */
+.user-dropdown-wrapper {
+  position: relative;
 }
 
 .user-profile {
+  background: none;
+  border: none;
   cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #f3f4f6;
+  border: 2px solid #fbbf24;
+  transition: transform 0.2s;
+}
+
+.user-profile:hover .avatar {
+  transform: scale(1.05);
+}
+
+/* Dropdown menu */
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  min-width: 180px;
+  overflow: hidden;
+  z-index: 200;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3748;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.dropdown-item:hover {
+  background: #f9fafb;
+}
+
+.dropdown-item.logout {
+  color: #e53e3e;
+}
+
+.dropdown-item.logout:hover {
+  background: #fff5f5;
+}
+
+.item-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 4px 0;
+}
+
+/* Transition */
+.dropdown-enter-active, .dropdown-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
+}
+.dropdown-enter-from, .dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>

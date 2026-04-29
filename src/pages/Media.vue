@@ -296,35 +296,6 @@
       @submit="handleUploadSubmit"
     />
 
-    <!-- Delete Confirmation Dialog -->
-    <ConfirmationDialog
-      v-model="deleteDialog.open"
-      title="Delete Media"
-      :message="`Are you sure you want to delete '${deleteDialog.item?.name}'?`"
-      detail="This action cannot be undone."
-      icon="mdi-delete-alert"
-      icon-color="error"
-      confirm-text="Delete"
-      confirm-color="error"
-      cancel-text="Cancel"
-      :loading="deleteDialog.loading"
-      @confirm="handleConfirmDelete"
-    />
-
-    <!-- Delete Folder Dialog -->
-    <ConfirmationDialog
-      v-model="deleteFolderDialog.open"
-      title="Delete Folder"
-      :message="`Are you sure you want to delete folder '${deleteFolderDialog.folder?.name}'?`"
-      detail="All contents will be permanently deleted."
-      icon="mdi-folder-alert"
-      icon-color="error"
-      confirm-text="Delete"
-      confirm-color="error"
-      cancel-text="Cancel"
-      :loading="deleteFolderDialog.loading"
-      @confirm="handleConfirmDeleteFolder"
-    />
 
     <!-- Preview Dialog -->
     <v-dialog v-model="previewDialog.open" max-width="860" rounded="lg">
@@ -371,9 +342,10 @@ import { useMediaStore } from "@/stores/media";
 import MediaUploadDialog from "@/components/dialogs/MediaUploadDialog.vue";
 import CreateFolderDialog from "@/components/dialogs/CreateFolderDialog.vue";
 import MediaDataTable from "@/components/datatables/MediaDataTable.vue";
-import ConfirmationDialog from "@/components/dialogs/ConfirmationDialog.vue";
+import { useConfirm } from "@/composables/useConfirm";
 
 const mediaStore = useMediaStore();
+const { confirm } = useConfirm();
 
 const searchValue = ref("");
 const activeType = ref("all");
@@ -391,18 +363,6 @@ const createFolderDialog = ref({
   open: false,
   loading: false,
   folderName: "",
-});
-
-const deleteDialog = ref({
-  open: false,
-  loading: false,
-  item: null,
-});
-
-const deleteFolderDialog = ref({
-  open: false,
-  loading: false,
-  folder: null,
 });
 
 const previewDialog = ref({
@@ -423,7 +383,12 @@ const totalFiles = computed(() => {
 });
 
 const currentFolders = computed(() => {
-  return mediaStore.folders.filter(f => f.parentId === currentFolderId.value);
+  return mediaStore.folders
+    .filter(f => f.parentId === currentFolderId.value)
+    .map(f => ({
+      ...f,
+      itemCount: mediaStore.mediaItems.filter(item => item.folderId === f.id).length,
+    }));
 });
 
 const displayedMedia = computed(() => {
@@ -557,22 +522,18 @@ const openRenameFolderDialog = (folder) => {
   }
 };
 
-const openDeleteFolderDialog = (folder) => {
-  deleteFolderDialog.value.folder = folder;
-  deleteFolderDialog.value.open = true;
-};
-
-const handleConfirmDeleteFolder = async () => {
-  if (!deleteFolderDialog.value.folder) return;
-  deleteFolderDialog.value.loading = true;
+const openDeleteFolderDialog = async (folder) => {
+  const ok = await confirm({
+    title: 'Delete Folder',
+    message: `Are you sure you want to delete folder '${folder.name}'?`,
+    detail: 'All contents will be permanently deleted.',
+    icon: 'mdi-folder-alert',
+  })
+  if (!ok) return
   try {
-    await mediaStore.deleteFolder(deleteFolderDialog.value.folder.id);
-    deleteFolderDialog.value.open = false;
+    await mediaStore.deleteFolder(folder.id);
   } catch (error) {
     console.error("Delete folder error:", error);
-  } finally {
-    deleteFolderDialog.value.loading = false;
-    deleteFolderDialog.value.folder = null;
   }
 };
 
@@ -608,22 +569,16 @@ const handleDownload = (item) => {
   document.body.removeChild(a);
 };
 
-const openDeleteDialog = (item) => {
-  deleteDialog.value.item = item;
-  deleteDialog.value.open = true;
-};
-
-const handleConfirmDelete = async () => {
-  if (!deleteDialog.value.item) return;
-  deleteDialog.value.loading = true;
+const openDeleteDialog = async (item) => {
+  const ok = await confirm({
+    title: 'Delete Media',
+    message: `Are you sure you want to delete '${item.name}'?`,
+  })
+  if (!ok) return
   try {
-    await mediaStore.deleteMedia(deleteDialog.value.item.id);
+    await mediaStore.deleteMedia(item.id);
   } catch (error) {
     console.error("Delete error:", error);
-  } finally {
-    deleteDialog.value.loading = false;
-    deleteDialog.value.open = false;
-    deleteDialog.value.item = null;
   }
 };
 

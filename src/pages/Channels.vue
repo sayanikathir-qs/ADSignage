@@ -1,21 +1,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useChannelsStore } from '@/stores/channel'  // ✅ Import store
+import { useChannelsStore } from '@/stores/channel'
 import { MoreVertical, Search, Plus, ArrowRightCircle } from 'lucide-vue-next'
 import CreateChannelDialog from '../components/dialogs/CreateChannelDialog.vue'
-import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 const router = useRouter()
-const channelStore = useChannelsStore()  // ✅ Initialize store
+const channelStore = useChannelsStore()
+const { confirm } = useConfirm()
 
 const searchQuery = ref('')
 const showCreateDialog = ref(false)
-
-const deleteDialog = ref({
-  open: false,
-  item: null
-})
 
 // ✅ Fetch channels on mount
 onMounted(async () => {
@@ -54,19 +50,14 @@ const handleEdit = (channel) => {
   })
 }
 
-const openDeleteDialog = (channel) => {
-  deleteDialog.value.item = channel
-  deleteDialog.value.open = true
-}
-
-// ✅ Delete uses store action
-const handleConfirmDelete = async () => {
-  if (!deleteDialog.value.item) return
-  
+const handleDelete = async (channel) => {
+  const ok = await confirm({
+    title: 'Delete Channel',
+    message: `Are you sure you want to delete '${channel.name}'?`,
+  })
+  if (!ok) return
   try {
-    await channelStore.deleteChannel(deleteDialog.value.item.id)
-    deleteDialog.value.open = false
-    deleteDialog.value.item = null
+    await channelStore.deleteChannel(channel.id)
   } catch (error) {
     console.error('Delete failed:', error)
   }
@@ -165,7 +156,7 @@ const duplicateChannel = async (channel) => {
                 <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-pencil</v-icon></template>
                 <v-list-item-title>Edit</v-list-item-title>
               </v-list-item>
-              <v-list-item @click.stop="openDeleteDialog(channel)" base-color="error">
+              <v-list-item @click.stop="handleDelete(channel)" base-color="error">
                 <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
                 <v-list-item-title>Delete</v-list-item-title>
               </v-list-item>
@@ -194,19 +185,6 @@ const duplicateChannel = async (channel) => {
       @create="handleCreate"
     />
 
-    <!-- Delete Confirmation Dialog -->
-    <ConfirmationDialog
-      v-model="deleteDialog.open"
-      title="Delete Channel"
-      :message="`Are you sure you want to delete '${deleteDialog.item?.name}'?`"
-      detail="This action cannot be undone."
-      icon="mdi-delete-alert"
-      icon-color="error"
-      confirm-text="Delete"
-      confirm-color="error"
-      cancel-text="Cancel"
-      @confirm="handleConfirmDelete"
-    />
   </div>
 </template>
 

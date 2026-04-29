@@ -3,13 +3,13 @@ import { Search, MoreVertical, X, Eye, Play } from 'lucide-vue-next'
 import { ref, onMounted, nextTick } from 'vue'
 import { usePlaylistStore } from '@/stores/playlist'
 import PlaylistBuilder from '@/components/PlaylistBuilder.vue'
-import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 const playlistStore = usePlaylistStore()
+const { confirm } = useConfirm()
 const activePlaylist = ref(null)
 const createDialog = ref(false)
 const newPlaylistName = ref('')
-const deleteDialog = ref({ open: false, item: null })
 const playlistInput = ref(null)
 const previewDialog = ref({ open: false, playlist: null })
 
@@ -50,20 +50,14 @@ const handlePreview = (playlist) => {
   previewDialog.value = { open: true, playlist }
 }
 
-const openDeleteDialog = (playlist) => {
-  deleteDialog.value.item = playlist
-  deleteDialog.value.open = true
-}
-
-const handleConfirmDelete = async () => {
-  if (!deleteDialog.value.item) return
-  
-  const result = await playlistStore.deletePlaylist(deleteDialog.value.item.id)
-  
-  if (result.success) {
-    deleteDialog.value.open = false
-    deleteDialog.value.item = null
-  }
+const handleDelete = async (playlist) => {
+  const ok = await confirm({
+    title: 'Delete Playlist',
+    message: `Delete '${playlist.name}'?`,
+    detail: 'This cannot be undone.',
+  })
+  if (!ok) return
+  await playlistStore.deletePlaylist(playlist.id)
 }
 </script>
 
@@ -133,7 +127,7 @@ const handleConfirmDelete = async () => {
                   <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-pencil</v-icon></template>
                   <v-list-item-title>Edit</v-list-item-title>
                 </v-list-item>
-                <v-list-item @click.stop="openDeleteDialog(playlist)" base-color="error">
+                <v-list-item @click.stop="handleDelete(playlist)" base-color="error">
                   <template v-slot:prepend><v-icon size="small" class="mr-2">mdi-delete</v-icon></template>
                   <v-list-item-title>Delete</v-list-item-title>
                 </v-list-item>
@@ -180,18 +174,6 @@ const handleConfirmDelete = async () => {
       </div>
     </div>
 
-    <!-- Delete Dialog -->
-    <ConfirmationDialog
-      v-model="deleteDialog.open"
-      title="Delete Playlist"
-      :message="`Delete '${deleteDialog.item?.name}'?`"
-      detail="This cannot be undone."
-      icon="mdi-delete-alert"
-      icon-color="error"
-      confirm-text="Delete"
-      confirm-color="error"
-      @confirm="handleConfirmDelete"
-    />
 
     <!-- Preview Dialog -->
     <div v-if="previewDialog.open" class="dialog-overlay" @click.self="previewDialog.open = false">

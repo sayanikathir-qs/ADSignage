@@ -139,22 +139,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="deleteDialog" max-width="400">
-      <v-card class="dialog-card">
-        <div class="dialog-header">
-          <span class="dialog-title">Delete Instance</span>
-          <button class="dialog-close" @click="deleteDialog = false">✕</button>
-        </div>
-        <div class="dialog-body">
-          <p>Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong>?</p>
-        </div>
-        <div class="dialog-footer" style="gap:8px;">
-          <button class="cancel-btn" @click="deleteDialog = false">Cancel</button>
-          <button class="submit-btn submit-btn--danger" @click="confirmDelete">Delete</button>
-        </div>
-      </v-card>
-    </v-dialog>
 
   </div>
 </template>
@@ -163,9 +147,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { APP_TYPES, APP_FORMS, useApplicationsStore } from '@/stores/applications'
+import { useConfirm } from '@/composables/useConfirm'
 
 const route  = useRoute()
 const store  = useApplicationsStore()
+const { confirm } = useConfirm()
 
 const appType  = computed(() => route.params.appType)
 const appMeta  = computed(() => APP_TYPES.find(a => a.type === appType.value) || { name: appType.value })
@@ -219,19 +205,14 @@ const handleSubmit = () => {
 }
 
 // ── delete ───────────────────────────────────────────────
-const deleteDialog = ref(false)
-const deleteTarget = ref(null)
-
-const handleDelete = (item) => {
+const handleDelete = async (item) => {
   closeMenu()
-  deleteTarget.value = item
-  deleteDialog.value = true
-}
-
-const confirmDelete = () => {
-  if (deleteTarget.value) store.remove(appType.value, deleteTarget.value.id)
-  deleteDialog.value = false
-  deleteTarget.value = null
+  const ok = await confirm({
+    title: 'Delete Instance',
+    message: `Are you sure you want to delete '${item.name}'?`,
+  })
+  if (!ok) return
+  store.remove(appType.value, item.id)
 }
 
 // ── three-dot menu ───────────────────────────────────────

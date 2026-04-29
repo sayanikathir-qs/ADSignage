@@ -47,7 +47,7 @@
                 <td>{{ sub.pairedTotal }}</td>
                 <td><span class="status-badge active">{{ sub.status }}</span></td>
                 <td>
-                  <button class="action-btn delete" @click="openDeleteDialog(sub)" title="Delete">
+                  <button class="action-btn delete" @click="handleDelete(sub)" title="Delete">
                     <span>🗑️</span>
                   </button>
                 </td>
@@ -139,21 +139,6 @@
 
     </main>
 
-    <!-- Delete Confirmation Dialog -->
-    <ConfirmationDialog
-      v-model="deleteDialog.open"
-      title="Delete Subscription"
-      :message="`Are you sure you want to delete subscription '${deleteDialog.item?.id?.slice(0, 12)}...'?`"
-      detail="This action cannot be undone."
-      icon="mdi-delete-alert"
-      icon-color="error"
-      confirm-text="Delete"
-      confirm-color="error"
-      cancel-text="Cancel"
-      :loading="deleteDialog.loading"
-      @confirm="handleConfirmDelete"
-    />
-
   </div>
 </template>
 
@@ -162,14 +147,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue3-toastify'
 import { useSubscriptionStore } from '@/stores/subscription'
-import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 const router = useRouter()
 const route = useRoute()
 const subscriptionStore = useSubscriptionStore()
-
-// ─── State ─────────────
-const deleteDialog = ref({ open: false, item: null, loading: false })
+const { confirm } = useConfirm()
 const searchQuery = ref('')
 const subscriptionsPerPage = ref('10')
 const currentPage = ref(1)
@@ -260,9 +243,24 @@ onMounted(() => {
 
 
 // ─── Actions ─────────────
-const openDeleteDialog = (sub) => {
-  deleteDialog.value.item = sub
-  deleteDialog.value.open = true
+const handleDelete = async (sub) => {
+  const ok = await confirm({
+    title: 'Delete Subscription',
+    message: `Are you sure you want to delete subscription '${sub.id?.slice(0, 12)}...'?`,
+  })
+  if (!ok) return
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    const result = subscriptionStore.deleteSubscription(sub.id)
+    if (result) {
+      toast.success('Subscription deleted successfully')
+    } else {
+      toast.error('Subscription not found')
+    }
+  } catch (err) {
+    console.error('Delete error:', err)
+    toast.error('Failed to delete subscription')
+  }
 }
 
 const handleDownload = (inv) => {
@@ -278,33 +276,6 @@ const handleDownload = (inv) => {
   window.URL.revokeObjectURL(url)
   document.body.removeChild(a)
   toast.success('Invoice downloaded')
-}
-
-const handleConfirmDelete = async () => {
-  if (!deleteDialog.value.item) return
-  
-  deleteDialog.value.loading = true
-  
-  try {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const result = subscriptionStore.deleteSubscription(deleteDialog.value.item.id)
-    
-    if (result) {
-      toast.success('Subscription deleted successfully')
-    } else {
-      toast.error('Subscription not found')
-    }
-    
-    deleteDialog.value.open = false
-    deleteDialog.value.item = null
-  } catch (err) {
-    console.error('Delete error:', err)
-    toast.error('Failed to delete subscription')
-  } finally {
-    deleteDialog.value.loading = false
-  }
 }
 
 // Pagination

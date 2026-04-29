@@ -4,6 +4,7 @@ import { useScreensStore } from '@/stores/screen'
 import { useChannelsStore } from '@/stores/channel'
 import { usePlaylistStore } from '@/stores/playlist'
 import { toast } from 'vue3-toastify'
+import { useConfirm } from '@/composables/useConfirm'
 import {
   Monitor,
   Search,
@@ -25,6 +26,7 @@ import {
 const screensStore = useScreensStore()
 const channelsStore = useChannelsStore()
 const playlistStore = usePlaylistStore()
+const { confirm } = useConfirm()
 
 const searchQuery = ref('')
 
@@ -152,20 +154,15 @@ const handleEditGroup = async () => {
   showEditGroup.value = false
 }
 
-// ─ Delete Group Dialog ────────────────────────────────
-const showDeleteGroup = ref(false)
-const deletingGroup = ref(null)
-
-const confirmDeleteGroup = (group) => {
-  deletingGroup.value = group
-  showDeleteGroup.value = true
-}
-
-const handleDeleteGroup = async () => {
-  if (!deletingGroup.value) return
-  await screensStore.deleteGroup(deletingGroup.value.id)
-  showDeleteGroup.value = false
-  deletingGroup.value = null
+// ─ Delete Group ───────────────────────────────────────
+const confirmDeleteGroup = async (group) => {
+  const ok = await confirm({
+    title: 'Delete Group',
+    message: `Are you sure you want to delete '${group.name}'?`,
+    detail: 'Screens in this group will become ungrouped.',
+  })
+  if (!ok) return
+  await screensStore.deleteGroup(group.id)
 }
 
 // ─ Assign Channel to Group Dialog ────────────────────
@@ -233,6 +230,12 @@ const handleRenameScreen = async () => {
 // ── Screen context menu actions ────────────────────
 const handleMenuAction = async (action, screenId) => {
   if (action === 'delete') {
+    const screen = localScreens.value.find(s => s.id === screenId)
+    const ok = await confirm({
+      title: 'Delete Screen',
+      message: `Are you sure you want to delete '${screen?.name || 'this screen'}'?`,
+    })
+    if (!ok) return
     await screensStore.deleteScreen(screenId)
   }
   if (action === 'removeChannel') {
@@ -798,24 +801,6 @@ const subscriptions = ['Basic - $9/mo', 'Pro - $29/mo', 'Enterprise - $99/mo']
     </v-card>
   </v-dialog>
 
-  <!-- ── Delete Group Confirm ──────────────────────────── -->
-  <v-dialog v-model="showDeleteGroup" max-width="420" rounded="lg">
-    <v-card rounded="lg" elevation="8">
-      <div class="preview-dialog-header">
-        <div class="preview-dialog-title">Delete Group</div>
-        <button class="preview-close-btn" @click="showDeleteGroup = false"><X :size="20" /></button>
-      </div>
-      <v-divider />
-      <v-card-text class="pt-5 pb-2">
-        <p>Are you sure you want to delete <strong>{{ deletingGroup?.name }}</strong>?</p>
-        <p class="text-medium-emphasis text-sm mt-1">Screens in this group will become ungrouped.</p>
-      </v-card-text>
-      <v-card-actions class="pa-4 pt-0 d-flex justify-end ga-2">
-        <v-btn variant="outlined" @click="showDeleteGroup = false">Cancel</v-btn>
-        <v-btn color="error" variant="flat" @click="handleDeleteGroup">Delete</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
 </template>
 
 <style scoped>
